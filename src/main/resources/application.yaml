@@ -1,0 +1,89 @@
+spring:
+  application:
+    name: loyalitybot
+
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:loyaltybot}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:postgres}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+
+  cache:
+    type: caffeine
+    caffeine:
+      spec: maximumSize=500,expireAfterWrite=10m
+
+server:
+  port: ${PORT:8080}
+  servlet:
+    context-path: /
+
+# Telegram Bot Configuration
+telegram:
+  bot:
+    token: ${TELEGRAM_BOT_TOKEN:}
+    username: ${TELEGRAM_BOT_USERNAME:}
+    webhook-path: /api/webhook/telegram
+
+# Poster POS API Configuration
+poster:
+  api:
+    base-url: https://joinposter.com/api
+    token: ${POSTER_API_TOKEN:}
+    account: ${POSTER_ACCOUNT:}
+  webhook:
+    secret: ${POSTER_WEBHOOK_SECRET:}
+
+# Loyalty Program Settings
+loyalty:
+  welcome-bonus: ${LOYALTY_WELCOME_BONUS:50}
+  bonus-percent: ${LOYALTY_BONUS_PERCENT:5}
+  currency-symbol: ${LOYALTY_CURRENCY_SYMBOL:грн}
+
+# Admin Configuration
+admin:
+  telegram-ids: ${ADMIN_TELEGRAM_IDS:}
+
+# Notification Retry Settings
+notification:
+  retry:
+    max-attempts: ${NOTIFICATION_MAX_RETRY:3}
+    initial-delay-ms: ${NOTIFICATION_RETRY_DELAY:60000}
+    multiplier: ${NOTIFICATION_RETRY_MULTIPLIER:2}
+
+# Scheduling
+scheduling:
+  enabled: ${SCHEDULING_ENABLED:true}
+  retry-cron: "0 */5 * * * *"
+  broadcast-cron: "0 */1 * * * *"
+
+# Logging
+logging:
+  level:
+    org.jume.loyalitybot: ${LOG_LEVEL:INFO}
+    org.telegram: WARN
+    org.hibernate.SQL: WARN
+
+# Actuator (optional health checks)
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: when-authorized
