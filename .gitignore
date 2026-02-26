@@ -60,3 +60,7 @@ build/
 
 ### Claude Code ###
 .claude/
+
+### Local secrets ###
+application-local.yaml
+.env
