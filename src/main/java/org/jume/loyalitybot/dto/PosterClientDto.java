@@ -36,7 +36,16 @@ public class PosterClientDto {
     private Integer clientSex;
 
     @JsonProperty("bonus")
-    private BigDecimal bonus;
+    private BigDecimal bonusKopecks;
+
+    /**
+     * Returns bonus in hryvnia (divided by 100)
+     */
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    public BigDecimal getBonusInHryvnia() {
+        if (bonusKopecks == null) return BigDecimal.ZERO;
+        return bonusKopecks.divide(BigDecimal.valueOf(100), 2, java.math.RoundingMode.HALF_UP);
+    }
 
     @JsonProperty("total_payed_sum")
     private BigDecimal totalPayedSum;
@@ -48,6 +57,9 @@ public class PosterClientDto {
     private Integer discountPercent;
 
     private String card;
+
+    @JsonProperty("card_number")
+    private String cardNumber;
 
     @JsonProperty("client_groups_id")
     private Long clientGroupsId;

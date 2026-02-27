@@ -26,13 +26,13 @@ public class BarcodeService {
     private static final int CARD_HEIGHT = 500;
     private static final int PADDING = 20;
 
-    public byte[] generateLoyaltyCard(Long posterClientId, String customerName) {
+    public byte[] generateLoyaltyCard(String cardNumber, String customerName) {
         try {
-            BufferedImage qrCode = generateQRCode(posterClientId.toString());
-            BufferedImage card = createLoyaltyCard(qrCode, posterClientId, customerName);
+            BufferedImage qrCode = generateQRCode(cardNumber);
+            BufferedImage card = createLoyaltyCard(qrCode, cardNumber, customerName);
             return toByteArray(card);
         } catch (Exception e) {
-            log.error("Error generating loyalty card for client {}", posterClientId, e);
+            log.error("Error generating loyalty card for card {}", cardNumber, e);
             throw new RuntimeException("Failed to generate loyalty card", e);
         }
     }
@@ -58,7 +58,7 @@ public class BarcodeService {
         return MatrixToImageWriter.toBufferedImage(bitMatrix);
     }
 
-    private BufferedImage createLoyaltyCard(BufferedImage qrCode, Long clientId, String customerName) {
+    private BufferedImage createLoyaltyCard(BufferedImage qrCode, String cardNumber, String customerName) {
         BufferedImage card = new BufferedImage(CARD_WIDTH, CARD_HEIGHT, BufferedImage.TYPE_INT_RGB);
         Graphics2D g2d = card.createGraphics();
 
@@ -89,10 +89,6 @@ public class BarcodeService {
         String name = truncateString(customerName, 30);
         int nameX = (CARD_WIDTH - fm.stringWidth(name)) / 2;
         g2d.drawString(name, nameX, qrY + QR_CODE_SIZE + 40);
-
-        String idLabel = "ID: " + clientId;
-        int idX = (CARD_WIDTH - fm.stringWidth(idLabel)) / 2;
-        g2d.drawString(idLabel, idX, qrY + QR_CODE_SIZE + 70);
 
         g2d.dispose();
         return card;

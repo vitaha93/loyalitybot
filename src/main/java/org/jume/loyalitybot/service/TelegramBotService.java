@@ -25,6 +25,11 @@ public class TelegramBotService {
         log.debug("Message sent to chat {}", chatId);
     }
 
+    public void sendMessageWithMainMenu(Long chatId, String text) {
+        telegramApiClient.sendMessage(chatId, text, "HTML", telegramApiClient.createMainMenuKeyboard());
+        log.debug("Message with main menu sent to chat {}", chatId);
+    }
+
     public void sendPhoto(Long chatId, byte[] imageData, String caption) {
         telegramApiClient.sendPhoto(chatId, imageData, caption, "HTML");
         log.debug("Photo sent to chat {}", chatId);
@@ -58,14 +63,11 @@ public class TelegramBotService {
                 "<b>Вітаємо в програмі лояльності!</b>\n\n" +
                 "%s, ви успішно зареєстровані!\n\n" +
                 "Вам нараховано вітальний бонус: <b>%s %s</b>\n\n" +
-                "Доступні команди:\n" +
-                "/balance - перевірити баланс\n" +
-                "/card - показати картку лояльності\n" +
-                "/help - допомога",
+                "Використовуйте кнопки меню нижче 👇",
                 customerName,
                 welcomeBonus.stripTrailingZeros().toPlainString(),
                 loyaltyConfig.getCurrencySymbol()
         );
-        sendMessage(chatId, message, true);
+        sendMessageWithMainMenu(chatId, message);
     }
 }

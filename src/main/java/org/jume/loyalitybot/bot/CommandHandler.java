@@ -50,6 +50,25 @@ public class CommandHandler {
 
         if (text.startsWith("/")) {
             handleCommand(telegramUser, chatId, text);
+        } else {
+            handleButtonText(telegramUser, chatId, text);
+        }
+    }
+
+    private void handleButtonText(TelegramUser telegramUser, Long chatId, String text) {
+        Customer customer = customerService.getOrCreateCustomer(telegramUser);
+
+        if (customer.getStatus() != CustomerStatus.ACTIVE) {
+            telegramBotService.sendMessage(chatId,
+                    "Будь ласка, завершіть реєстрацію, поділившись номером телефону.");
+            telegramBotService.requestContact(chatId);
+            return;
+        }
+
+        switch (text) {
+            case "💰 Баланс" -> userCommandHandler.handleBalance(chatId, customer);
+            case "🎫 Картка" -> userCommandHandler.handleCard(chatId, customer);
+            case "❓ Допомога" -> userCommandHandler.handleHelp(chatId);
         }
     }
 
@@ -85,13 +104,10 @@ public class CommandHandler {
             String message = String.format(
                     "Вітаю, %s!\n\n" +
                     "Ви вже зареєстровані в програмі лояльності.\n\n" +
-                    "Доступні команди:\n" +
-                    "/balance - перевірити баланс\n" +
-                    "/card - показати картку лояльності\n" +
-                    "/help - допомога",
+                    "Використовуйте кнопки меню нижче 👇",
                     customer.getDisplayName()
             );
-            telegramBotService.sendMessage(chatId, message);
+            telegramBotService.sendMessageWithMainMenu(chatId, message);
         } else {
             String message = "Вітаю в програмі лояльності нашої кав'ярні!\n\n" +
                     "Для реєстрації, будь ласка, поділіться своїм номером телефону.";

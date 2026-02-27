@@ -3,9 +3,11 @@ package org.jume.loyalitybot.bot;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jume.loyalitybot.config.LoyaltyConfig;
+import org.jume.loyalitybot.dto.PosterClientDto;
 import org.jume.loyalitybot.model.Customer;
 import org.jume.loyalitybot.service.BarcodeService;
 import org.jume.loyalitybot.service.CustomerService;
+import org.jume.loyalitybot.service.PosterApiService;
 import org.jume.loyalitybot.service.TelegramBotService;
 import org.springframework.stereotype.Component;
 
@@ -20,6 +22,7 @@ public class UserCommandHandler {
     private final TelegramBotService telegramBotService;
     private final CustomerService customerService;
     private final BarcodeService barcodeService;
+    private final PosterApiService posterApiService;
     private final LoyaltyConfig loyaltyConfig;
 
     public void handleBalance(Long chatId, Customer customer) {
@@ -61,16 +64,37 @@ public class UserCommandHandler {
         }
 
         try {
+            log.info("Fetching Poster client for ID: {}", customer.getPosterClientId());
+            Optional<PosterClientDto> posterClient = posterApiService.getClient(customer.getPosterClientId());
+            log.info("Poster client present: {}", posterClient.isPresent());
+
+            if (posterClient.isEmpty()) {
+                log.warn("Poster client not found for ID: {}", customer.getPosterClientId());
+                telegramBotService.sendMessage(chatId,
+                        "Не вдалося отримати дані клієнта. Спробуйте пізніше.");
+                return;
+            }
+
+            String cardNumber = posterClient.get().getCardNumber();
+            log.info("Card number from Poster: {}", cardNumber);
+
+            if (cardNumber == null || cardNumber.isBlank()) {
+                log.warn("Card number is null or blank for client: {}", customer.getPosterClientId());
+                telegramBotService.sendMessage(chatId,
+                        "Не вдалося отримати номер картки. Спробуйте пізніше.");
+                return;
+            }
+
             byte[] cardImage = barcodeService.generateLoyaltyCard(
-                    customer.getPosterClientId(),
+                    cardNumber,
                     customer.getDisplayName()
             );
 
             String caption = String.format(
                     "Ваша картка лояльності\n" +
-                    "ID: %d\n\n" +
+                    "Картка: %s\n\n" +
                     "Покажіть цей QR-код касиру для нарахування бонусів",
-                    customer.getPosterClientId()
+                    cardNumber
             );
 
             telegramBotService.sendPhoto(chatId, cardImage, caption);

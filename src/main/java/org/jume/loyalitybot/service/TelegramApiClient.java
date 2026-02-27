@@ -109,4 +109,20 @@ public class TelegramApiClient {
     public Map<String, Object> removeKeyboard() {
         return Map.of("remove_keyboard", true);
     }
+
+    public Map<String, Object> createMainMenuKeyboard() {
+        return Map.of(
+                "keyboard", List.of(
+                        List.of(
+                                Map.of("text", "💰 Баланс"),
+                                Map.of("text", "🎫 Картка")
+                        ),
+                        List.of(
+                                Map.of("text", "❓ Допомога")
+                        )
+                ),
+                "resize_keyboard", true,
+                "is_persistent", true
+        );
+    }
 }

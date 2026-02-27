@@ -27,8 +27,11 @@ public class PosterApiConfig {
 
     @Bean
     public RestClient posterRestClient() {
+        String url = account != null && !account.isBlank()
+                ? "https://" + account + ".joinposter.com/api"
+                : baseUrl;
         return RestClient.builder()
-                .baseUrl(baseUrl)
+                .baseUrl(url)
                 .defaultHeader("Content-Type", "application/json")
                 .build();
     }

@@ -71,8 +71,14 @@ public class PosterApiService {
             JsonNode responseNode = root.path("response");
 
             if (!responseNode.isMissingNode() && !responseNode.isNull()) {
-                PosterClientDto client = objectMapper.treeToValue(responseNode, PosterClientDto.class);
-                return Optional.of(client);
+                // Poster API returns array even for single client
+                if (responseNode.isArray() && !responseNode.isEmpty()) {
+                    PosterClientDto client = objectMapper.treeToValue(responseNode.get(0), PosterClientDto.class);
+                    return Optional.of(client);
+                } else if (!responseNode.isArray()) {
+                    PosterClientDto client = objectMapper.treeToValue(responseNode, PosterClientDto.class);
+                    return Optional.of(client);
+                }
             }
 
             return Optional.empty();
@@ -117,7 +123,7 @@ public class PosterApiService {
     public Optional<BigDecimal> getClientBonus(Long clientId) {
         log.debug("Getting bonus for client: {}", clientId);
         return getClient(clientId)
-                .map(PosterClientDto::getBonus);
+                .map(PosterClientDto::getBonusInHryvnia);
     }
 
     @CacheEvict(value = {CacheConfig.POSTER_CLIENT_CACHE, CacheConfig.POSTER_BONUS_CACHE}, key = "#clientId")
