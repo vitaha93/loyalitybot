@@ -9,6 +9,9 @@ import org.jume.loyalitybot.dto.TelegramUpdate.TelegramUser;
 import org.jume.loyalitybot.model.Customer;
 import org.jume.loyalitybot.model.Customer.CustomerStatus;
 import org.jume.loyalitybot.repository.CustomerRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -126,6 +129,26 @@ public class CustomerService {
 
     public long getTotalCustomersCount() {
         return customerRepository.count();
+    }
+
+    public long getPendingCustomersCount() {
+        return customerRepository.countByStatus(CustomerStatus.PENDING_PHONE);
+    }
+
+    public Optional<Customer> getCustomerById(Long id) {
+        return customerRepository.findById(id);
+    }
+
+    public Page<Customer> getAllCustomers(Pageable pageable) {
+        return customerRepository.findAll(pageable);
+    }
+
+    public Page<Customer> searchCustomers(String query, Pageable pageable) {
+        return customerRepository.searchCustomers(query, pageable);
+    }
+
+    public List<Customer> searchCustomersForSelect(String query, int limit) {
+        return customerRepository.searchCustomersForSelect(query, PageRequest.of(0, limit));
     }
 
     private String normalizePhone(String phone) {

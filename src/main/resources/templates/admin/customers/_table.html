@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<div th:fragment="table">
+    <table class="table sortable" th:if="${customers != null and customers.totalElements > 0}">
+        <thead>
+            <tr>
+                <th data-sort="number">ID</th>
+                <th data-sort="text">Ім'я</th>
+                <th data-sort="text">Телефон</th>
+                <th data-sort="text">Telegram</th>
+                <th data-sort="text">Статус</th>
+                <th data-sort="date">Дата реєстрації</th>
+                <th>Дії</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr th:each="customer : ${customers.content}">
+                <td th:text="${customer.id}">1</td>
+                <td th:text="${customer.displayName}">-</td>
+                <td th:text="${customer.phone ?: '-'}">-</td>
+                <td>
+                    <span th:if="${customer.telegramUsername != null}" th:text="'@' + ${customer.telegramUsername}">@username</span>
+                    <span th:if="${customer.telegramUsername == null}" th:text="${customer.telegramId}">123456</span>
+                </td>
+                <td>
+                    <span class="badge" th:classappend="${customer.status.name() == 'ACTIVE'} ? 'badge-success' : 'badge-warning'"
+                          th:text="${customer.status.name()}">ACTIVE</span>
+                </td>
+                <td th:text="${#temporals.format(customer.createdAt, 'dd.MM.yyyy HH:mm')}">01.01.2024</td>
+                <td>
+                    <a th:href="@{/admin/customers/{id}(id=${customer.id})}" class="btn btn-sm">Деталі</a>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+
+    <p th:if="${customers == null or customers.totalElements == 0}" class="empty-state">
+        Клієнтів не знайдено
+    </p>
+
+    <!-- Pagination -->
+    <div class="pagination" th:if="${customers != null and customers.totalPages > 1}">
+        <a th:if="${currentPage > 0}"
+           th:href="@{/admin/customers(search=${search}, page=${currentPage - 1}, sort=${sort}, order=${order})}"
+           class="btn btn-sm">&laquo; Попередня</a>
+
+        <span class="pagination-info">
+            Сторінка <span th:text="${currentPage + 1}">1</span> з <span th:text="${customers.totalPages}">10</span>
+            (всього <span th:text="${customers.totalElements}">100</span>)
+        </span>
+
+        <a th:if="${currentPage < customers.totalPages - 1}"
+           th:href="@{/admin/customers(search=${search}, page=${currentPage + 1}, sort=${sort}, order=${order})}"
+           class="btn btn-sm">Наступна &raquo;</a>
+    </div>
+</div>
+</body>
+</html>

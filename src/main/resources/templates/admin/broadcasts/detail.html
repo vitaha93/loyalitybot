@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{admin/layout/base :: layout(~{::content}, 'Деталі розсилки')}">
+<body>
+<div th:fragment="content">
+    <div class="page-header">
+        <a th:href="@{/admin/broadcasts}" class="btn btn-back">&larr; Назад</a>
+        <h1>Розсилка #<span th:text="${broadcast.id}">1</span></h1>
+    </div>
+
+    <div class="detail-grid">
+        <div class="card">
+            <div class="card-header">
+                <h2>Інформація</h2>
+            </div>
+            <div class="card-body">
+                <dl class="info-list">
+                    <div class="info-item">
+                        <dt>Статус</dt>
+                        <dd>
+                            <span class="badge"
+                                  th:classappend="${broadcast.status.name() == 'COMPLETED'} ? 'badge-success' : (${broadcast.status.name() == 'IN_PROGRESS'} ? 'badge-warning' : 'badge-secondary')"
+                                  th:text="${broadcast.status.name()}">PENDING</span>
+                        </dd>
+                    </div>
+                    <div class="info-item">
+                        <dt>Створено</dt>
+                        <dd th:text="${#temporals.format(broadcast.createdAt, 'dd.MM.yyyy HH:mm')}">01.01.2024</dd>
+                    </div>
+                    <div class="info-item" th:if="${broadcast.startedAt != null}">
+                        <dt>Розпочато</dt>
+                        <dd th:text="${#temporals.format(broadcast.startedAt, 'dd.MM.yyyy HH:mm')}">01.01.2024</dd>
+                    </div>
+                    <div class="info-item" th:if="${broadcast.completedAt != null}">
+                        <dt>Завершено</dt>
+                        <dd th:text="${#temporals.format(broadcast.completedAt, 'dd.MM.yyyy HH:mm')}">01.01.2024</dd>
+                    </div>
+                </dl>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h2>Прогрес</h2>
+            </div>
+            <div class="card-body"
+                 th:if="${broadcast.status.name() == 'IN_PROGRESS'}"
+                 hx-get="/admin/broadcasts/{id}/status"
+                 th:hx-get="@{/admin/broadcasts/{id}/status(id=${broadcast.id})}"
+                 hx-trigger="every 3s"
+                 hx-swap="innerHTML">
+                <div th:replace="~{admin/broadcasts/_status :: status}"></div>
+            </div>
+            <div class="card-body" th:if="${broadcast.status.name() != 'IN_PROGRESS'}">
+                <div th:replace="~{admin/broadcasts/_status :: status}"></div>
+            </div>
+        </div>
+
+        <div class="card full-width">
+            <div class="card-header">
+                <h2>Повідомлення</h2>
+            </div>
+            <div class="card-body">
+                <pre class="message-content" th:text="${broadcast.message}">Message</pre>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

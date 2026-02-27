@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{admin/layout/base :: layout(~{::content}, 'Деталі клієнта')}">
+<body>
+<div th:fragment="content">
+    <div class="page-header">
+        <a th:href="@{/admin/customers}" class="btn btn-back">&larr; Назад</a>
+        <h1 th:text="${customer.displayName}">Клієнт</h1>
+    </div>
+
+    <div class="detail-grid">
+        <!-- Customer Info -->
+        <div class="card">
+            <div class="card-header">
+                <h2>Інформація про клієнта</h2>
+            </div>
+            <div class="card-body">
+                <dl class="info-list">
+                    <div class="info-item">
+                        <dt>ID</dt>
+                        <dd th:text="${customer.id}">1</dd>
+                    </div>
+                    <div class="info-item">
+                        <dt>Ім'я</dt>
+                        <dd th:text="${customer.firstName ?: '-'}">-</dd>
+                    </div>
+                    <div class="info-item">
+                        <dt>Прізвище</dt>
+                        <dd th:text="${customer.lastName ?: '-'}">-</dd>
+                    </div>
+                    <div class="info-item">
+                        <dt>Телефон</dt>
+                        <dd th:text="${customer.phone ?: '-'}">-</dd>
+                    </div>
+                    <div class="info-item">
+                        <dt>Telegram ID</dt>
+                        <dd th:text="${customer.telegramId}">123456</dd>
+                    </div>
+                    <div class="info-item">
+                        <dt>Telegram Username</dt>
+                        <dd th:text="${customer.telegramUsername != null ? '@' + customer.telegramUsername : '-'}">@username</dd>
+                    </div>
+                    <div class="info-item">
+                        <dt>Статус</dt>
+                        <dd>
+                            <span class="badge" th:classappend="${customer.status.name() == 'ACTIVE'} ? 'badge-success' : 'badge-warning'"
+                                  th:text="${customer.status.name()}">ACTIVE</span>
+                        </dd>
+                    </div>
+                    <div class="info-item">
+                        <dt>Poster ID</dt>
+                        <dd th:text="${customer.posterClientId != null ? customer.posterClientId : 'Не привязано'}">-</dd>
+                    </div>
+                    <div class="info-item">
+                        <dt>Дата реєстрації</dt>
+                        <dd th:text="${#temporals.format(customer.createdAt, 'dd.MM.yyyy HH:mm')}">01.01.2024</dd>
+                    </div>
+                </dl>
+            </div>
+        </div>
+
+        <!-- Poster Info -->
+        <div class="card" th:if="${posterClient != null}">
+            <div class="card-header">
+                <h2>Дані з Poster</h2>
+            </div>
+            <div class="card-body">
+                <dl class="info-list">
+                    <div class="info-item highlight">
+                        <dt>Бонуси</dt>
+                        <dd th:text="${#numbers.formatDecimal(posterClient.bonusInHryvnia, 1, 2)} + ' грн'">0 грн</dd>
+                    </div>
+                    <div class="info-item highlight">
+                        <dt>Загальна сума покупок</dt>
+                        <dd th:text="${#numbers.formatDecimal(posterClient.totalPayedSumInHryvnia, 1, 2)} + ' грн'">0 грн</dd>
+                    </div>
+                    <div class="info-item">
+                        <dt>Знижка</dt>
+                        <dd th:text="${posterClient.discountPercent != null ? posterClient.discountPercent + '%' : 'Немає'}">0%</dd>
+                    </div>
+                </dl>
+
+                <!-- Bonus Actions -->
+                <div class="actions-group">
+                    <h4>Управління бонусами</h4>
+                    <form th:action="@{/admin/bonuses/add}" method="post" class="inline-form">
+                        <input type="hidden" name="customerId" th:value="${customer.id}">
+                        <input type="number" name="amount" placeholder="Сума" min="1" required class="input-sm">
+                        <input type="text" name="comment" placeholder="Коментар" class="input-sm">
+                        <button type="submit" class="btn btn-success btn-sm">+ Нарахувати</button>
+                    </form>
+                    <form th:action="@{/admin/bonuses/subtract}" method="post" class="inline-form">
+                        <input type="hidden" name="customerId" th:value="${customer.id}">
+                        <input type="number" name="amount" placeholder="Сума" min="1" required class="input-sm">
+                        <input type="text" name="comment" placeholder="Коментар" class="input-sm">
+                        <button type="submit" class="btn btn-danger btn-sm">- Списати</button>
+                    </form>
+                </div>
+
+                <!-- Discount Actions -->
+                <div class="actions-group">
+                    <h4>Персональна знижка</h4>
+                    <a th:href="@{/admin/discounts/create(customerId=${customer.id})}" class="btn btn-primary btn-sm">
+                        Встановити знижку
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Favorite Products -->
+        <div class="card" th:if="${posterClient != null}">
+            <div class="card-header">
+                <h2>Топ товарів</h2>
+            </div>
+            <div class="card-body">
+                <ul class="favorite-list" th:if="${favoriteProducts != null and !favoriteProducts.isEmpty()}">
+                    <li th:each="fp : ${favoriteProducts}">
+                        <span class="product-name" th:text="${fp.name}">Product</span>
+                        <span class="product-count" th:text="${fp.count} + ' шт.'">0 шт.</span>
+                    </li>
+                </ul>
+                <p th:if="${favoriteProducts == null or favoriteProducts.isEmpty()}" class="empty-state">
+                    Немає даних про товари
+                </p>
+            </div>
+        </div>
+
+        <!-- Transactions -->
+        <div class="card full-width">
+            <div class="card-header">
+                <h2>Історія транзакцій</h2>
+            </div>
+            <div class="card-body">
+                <table class="table sortable" th:if="${transactions != null and !transactions.isEmpty()}">
+                    <thead>
+                        <tr>
+                            <th data-sort="date">Дата</th>
+                            <th data-sort="currency">Сума</th>
+                            <th data-sort="currency">Бонуси нараховано</th>
+                            <th data-sort="currency">Бонусами оплачено</th>
+                            <th data-sort="currency">Знижка</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="tx : ${transactions}">
+                            <td th:text="${tx.dateClose}">-</td>
+                            <td th:text="${#numbers.formatDecimal(tx.payedSumInHryvnia, 1, 2)} + ' грн'">0 грн</td>
+                            <td th:text="${tx.bonusEarnedInHryvnia.compareTo(T(java.math.BigDecimal).ZERO) > 0 ? #numbers.formatDecimal(tx.bonusEarnedInHryvnia, 1, 2) + ' грн' : '-'}">0</td>
+                            <td th:text="${tx.payedBonusInHryvnia.compareTo(T(java.math.BigDecimal).ZERO) > 0 ? #numbers.formatDecimal(tx.payedBonusInHryvnia, 1, 2) + ' грн' : '-'}">0</td>
+                            <td th:text="${tx.discountInHryvnia.compareTo(T(java.math.BigDecimal).ZERO) > 0 ? #numbers.formatDecimal(tx.discountInHryvnia, 1, 2) + ' грн' : '-'}">0</td>
+                        </tr>
+                    </tbody>
+                </table>
+                <p th:if="${transactions == null or transactions.isEmpty()}" class="empty-state">Немає транзакцій</p>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

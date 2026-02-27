@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{admin/layout/base :: layout(~{::content}, 'Створити розсилку')}">
+<body>
+<div th:fragment="content">
+    <div class="page-header">
+        <a th:href="@{/admin/broadcasts}" class="btn btn-back">&larr; Назад</a>
+        <h1>Створити розсилку</h1>
+    </div>
+
+    <div th:if="${error}" class="alert alert-error" th:text="${error}"></div>
+
+    <div class="card">
+        <div class="card-body">
+            <form th:action="@{/admin/broadcasts/create}" method="post" class="form">
+                <div class="form-group">
+                    <label for="message">Повідомлення</label>
+                    <textarea id="message" name="message" rows="6" required
+                              placeholder="Введіть текст повідомлення для розсилки..."></textarea>
+                    <small>Підтримується форматування Telegram (bold, italic, тощо)</small>
+                </div>
+
+                <div class="alert alert-warning">
+                    <strong>Увага!</strong> Розсилка буде надіслана всім активним клієнтам.
+                    Переконайтесь, що текст повідомлення коректний.
+                </div>
+
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">Створити розсилку</button>
+                    <a th:href="@{/admin/broadcasts}" class="btn">Скасувати</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+</body>
+</html>

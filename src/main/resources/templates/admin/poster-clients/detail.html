@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{admin/layout/base :: layout(~{::content}, 'Клієнт Poster')}">
+<body>
+<div th:fragment="content">
+    <div class="page-header">
+        <a th:href="@{/admin/poster-clients}" class="btn btn-back">&larr; Назад</a>
+        <h1>
+            <span th:text="${posterClient.firstName ?: ''}">First</span>
+            <span th:text="${posterClient.lastName ?: ''}">Last</span>
+            <small th:text="'#' + ${posterClient.clientId}">#123</small>
+        </h1>
+    </div>
+
+    <div class="detail-grid">
+        <!-- Client Info -->
+        <div class="card">
+            <div class="card-header">
+                <h2>Інформація про клієнта</h2>
+            </div>
+            <div class="card-body">
+                <dl class="info-list">
+                    <div class="info-item">
+                        <dt>Poster ID</dt>
+                        <dd th:text="${posterClient.clientId}">123</dd>
+                    </div>
+                    <div class="info-item">
+                        <dt>Ім'я</dt>
+                        <dd th:text="${posterClient.firstName ?: '-'}">-</dd>
+                    </div>
+                    <div class="info-item">
+                        <dt>Прізвище</dt>
+                        <dd th:text="${posterClient.lastName ?: '-'}">-</dd>
+                    </div>
+                    <div class="info-item">
+                        <dt>Телефон</dt>
+                        <dd th:text="${posterClient.normalizedPhone ?: '-'}">-</dd>
+                    </div>
+                    <div class="info-item">
+                        <dt>Email</dt>
+                        <dd th:text="${posterClient.email ?: '-'}">-</dd>
+                    </div>
+                    <div class="info-item">
+                        <dt>День народження</dt>
+                        <dd th:text="${posterClient.birthday ?: '-'}">-</dd>
+                    </div>
+                    <div class="info-item">
+                        <dt>Дата активації</dt>
+                        <dd th:text="${posterClient.dateActivate ?: '-'}">-</dd>
+                    </div>
+                    <div class="info-item">
+                        <dt>Картка</dt>
+                        <dd th:text="${posterClient.cardNumber ?: posterClient.card ?: '-'}">-</dd>
+                    </div>
+                </dl>
+
+                <!-- Link to Telegram customer -->
+                <div class="actions-group" th:if="${linkedCustomer != null}">
+                    <h4>Прив'язаний акаунт Telegram</h4>
+                    <p>
+                        <a th:href="@{/admin/customers/{id}(id=${linkedCustomer.id})}" class="btn btn-primary btn-sm">
+                            Переглянути <span th:text="${linkedCustomer.displayName}">Customer</span>
+                        </a>
+                    </p>
+                </div>
+                <div class="actions-group" th:if="${linkedCustomer == null}">
+                    <p class="text-muted">Не прив'язано до Telegram акаунту</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stats -->
+        <div class="card">
+            <div class="card-header">
+                <h2>Статистика</h2>
+            </div>
+            <div class="card-body">
+                <dl class="info-list">
+                    <div class="info-item highlight">
+                        <dt>Бонуси</dt>
+                        <dd th:text="${#numbers.formatDecimal(posterClient.bonusInHryvnia, 1, 2)} + ' грн'">0 грн</dd>
+                    </div>
+                    <div class="info-item highlight">
+                        <dt>Загальна сума покупок</dt>
+                        <dd th:text="${#numbers.formatDecimal(posterClient.totalPayedSumInHryvnia, 1, 2)} + ' грн'">0 грн</dd>
+                    </div>
+                    <div class="info-item">
+                        <dt>Знижка</dt>
+                        <dd th:text="${posterClient.discountPercent != null ? posterClient.discountPercent + '%' : 'Немає'}">0%</dd>
+                    </div>
+                </dl>
+            </div>
+        </div>
+
+        <!-- Favorite Products -->
+        <div class="card">
+            <div class="card-header">
+                <h2>Топ товарів</h2>
+            </div>
+            <div class="card-body">
+                <ul class="favorite-list" th:if="${favoriteProducts != null and !favoriteProducts.isEmpty()}">
+                    <li th:each="fp : ${favoriteProducts}">
+                        <span class="product-name" th:text="${fp.name}">Product</span>
+                        <span class="product-count" th:text="${fp.count} + ' шт.'">0 шт.</span>
+                    </li>
+                </ul>
+                <p th:if="${favoriteProducts == null or favoriteProducts.isEmpty()}" class="empty-state">
+                    Немає даних про товари
+                </p>
+            </div>
+        </div>
+
+        <!-- Transactions -->
+        <div class="card full-width">
+            <div class="card-header">
+                <h2>Історія транзакцій</h2>
+            </div>
+            <div class="card-body">
+                <table class="table sortable" th:if="${transactions != null and !transactions.isEmpty()}">
+                    <thead>
+                        <tr>
+                            <th data-sort="number">ID</th>
+                            <th data-sort="date">Дата</th>
+                            <th data-sort="currency">Сума</th>
+                            <th data-sort="currency">Оплачено</th>
+                            <th data-sort="currency">Бонуси +</th>
+                            <th data-sort="currency">Бонуси -</th>
+                            <th data-sort="currency">Знижка</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="tx : ${transactions}">
+                            <td th:text="${tx.transactionId}">-</td>
+                            <td th:text="${tx.dateClose}">-</td>
+                            <td th:text="${#numbers.formatDecimal(tx.sumInHryvnia, 1, 2)} + ' грн'">0 грн</td>
+                            <td th:text="${#numbers.formatDecimal(tx.payedSumInHryvnia, 1, 2)} + ' грн'">0 грн</td>
+                            <td>
+                                <span th:if="${tx.bonusEarnedInHryvnia.compareTo(T(java.math.BigDecimal).ZERO) > 0}"
+                                      class="bonus-earned" th:text="'+' + ${#numbers.formatDecimal(tx.bonusEarnedInHryvnia, 1, 2)}">+0</span>
+                                <span th:if="${tx.bonusEarnedInHryvnia.compareTo(T(java.math.BigDecimal).ZERO) <= 0}">-</span>
+                            </td>
+                            <td>
+                                <span th:if="${tx.payedBonusInHryvnia.compareTo(T(java.math.BigDecimal).ZERO) > 0}"
+                                      class="bonus-spent" th:text="'-' + ${#numbers.formatDecimal(tx.payedBonusInHryvnia, 1, 2)}">-0</span>
+                                <span th:if="${tx.payedBonusInHryvnia.compareTo(T(java.math.BigDecimal).ZERO) <= 0}">-</span>
+                            </td>
+                            <td th:text="${tx.discountInHryvnia.compareTo(T(java.math.BigDecimal).ZERO) > 0 ? #numbers.formatDecimal(tx.discountInHryvnia, 1, 2) + ' грн' : '-'}">-</td>
+                        </tr>
+                    </tbody>
+                </table>
+                <p th:if="${transactions == null or transactions.isEmpty()}" class="empty-state">Немає транзакцій</p>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

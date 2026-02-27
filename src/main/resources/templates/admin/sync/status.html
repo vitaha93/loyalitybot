@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{admin/layout/base :: layout(~{::content}, 'Синхронізація')}">
+<body>
+<div th:fragment="content">
+    <div class="page-header">
+        <h1>Синхронізація даних</h1>
+    </div>
+
+    <div th:if="${success}" class="alert alert-success" th:text="${success}"></div>
+    <div th:if="${error}" class="alert alert-error" th:text="${error}"></div>
+
+    <div class="card">
+        <div class="card-header">
+            <h2>Статус синхронізації транзакцій</h2>
+        </div>
+        <div class="card-body">
+            <dl class="info-list" th:if="${syncStatus != null}">
+                <div class="info-item">
+                    <dt>Остання синхронізація</dt>
+                    <dd th:text="${syncStatus.lastSyncAt != null ? #temporals.format(syncStatus.lastSyncAt, 'dd.MM.yyyy HH:mm:ss') : 'Ще не синхронізовано'}">-</dd>
+                </div>
+                <div class="info-item">
+                    <dt>Дата останніх даних</dt>
+                    <dd th:text="${syncStatus.lastSyncDate != null ? syncStatus.lastSyncDate : 'Немає'}">-</dd>
+                </div>
+                <div class="info-item">
+                    <dt>Синхронізовано записів</dt>
+                    <dd th:text="${syncStatus.recordsSynced != null ? syncStatus.recordsSynced : 0}">0</dd>
+                </div>
+            </dl>
+
+            <p th:if="${syncStatus == null}" class="empty-state">
+                Синхронізацію ще не запускали. Натисніть кнопку нижче для першої синхронізації.
+            </p>
+
+            <div class="form-actions">
+                <form th:action="@{/admin/sync/transactions}" method="post">
+                    <button type="submit" class="btn btn-primary">
+                        Синхронізувати зараз
+                    </button>
+                </form>
+            </div>
+
+            <p class="text-muted" style="margin-top: 1rem; font-size: 0.875rem;">
+                Автоматична синхронізація відбувається кожні 15 хвилин.
+                Перша синхронізація може зайняти декілька хвилин (завантажуються дані за 3 місяці).
+            </p>
+        </div>
+    </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<div th:fragment="status">
+    <div class="broadcast-stats">
+        <div class="stat">
+            <span class="stat-value" th:text="${broadcast.totalRecipients}">0</span>
+            <span class="stat-label">Всього отримувачів</span>
+        </div>
+        <div class="stat success">
+            <span class="stat-value" th:text="${broadcast.sentCount}">0</span>
+            <span class="stat-label">Успішно відправлено</span>
+        </div>
+        <div class="stat error">
+            <span class="stat-value" th:text="${broadcast.failedCount}">0</span>
+            <span class="stat-label">Помилок</span>
+        </div>
+    </div>
+
+    <div class="progress-bar-large" th:if="${broadcast.totalRecipients > 0}">
+        <div class="progress-fill"
+             th:style="'width: ' + ${(broadcast.sentCount + broadcast.failedCount) * 100 / broadcast.totalRecipients} + '%'"></div>
+        <span class="progress-text"
+              th:text="${(broadcast.sentCount + broadcast.failedCount) * 100 / broadcast.totalRecipients} + '%'">0%</span>
+    </div>
+</div>
+</body>
+</html>

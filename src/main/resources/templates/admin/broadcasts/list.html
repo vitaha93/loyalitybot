@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{admin/layout/base :: layout(~{::content}, 'Розсилки')}">
+<body>
+<div th:fragment="content">
+    <div class="page-header">
+        <h1>Розсилки</h1>
+        <a th:href="@{/admin/broadcasts/create}" class="btn btn-primary">+ Створити розсилку</a>
+    </div>
+
+    <div th:if="${success}" class="alert alert-success" th:text="${success}"></div>
+    <div th:if="${error}" class="alert alert-error" th:text="${error}"></div>
+
+    <div class="card">
+        <div class="card-header">
+            <h2>Історія розсилок</h2>
+        </div>
+        <div class="card-body">
+            <table class="table sortable" th:if="${broadcasts != null and !broadcasts.isEmpty()}">
+                <thead>
+                    <tr>
+                        <th data-sort="number">ID</th>
+                        <th data-sort="text">Повідомлення</th>
+                        <th data-sort="text">Статус</th>
+                        <th data-sort="number">Прогрес</th>
+                        <th data-sort="date">Створено</th>
+                        <th>Дії</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="b : ${broadcasts}">
+                        <td th:text="${b.id}">1</td>
+                        <td class="message-preview" th:text="${#strings.abbreviate(b.message, 50)}">Message...</td>
+                        <td>
+                            <span class="badge"
+                                  th:classappend="${b.status.name() == 'COMPLETED'} ? 'badge-success' : (${b.status.name() == 'IN_PROGRESS'} ? 'badge-warning' : 'badge-secondary')"
+                                  th:text="${b.status.name()}">PENDING</span>
+                        </td>
+                        <td>
+                            <div class="progress-bar-container" th:if="${b.totalRecipients > 0}">
+                                <div class="progress-bar"
+                                     th:style="'width: ' + ${(b.sentCount + b.failedCount) * 100 / b.totalRecipients} + '%'"></div>
+                            </div>
+                            <span th:text="${b.sentCount} + '/' + ${b.totalRecipients}">0/0</span>
+                            <span th:if="${b.failedCount > 0}" class="failed-count" th:text="'(' + ${b.failedCount} + ' помилок)'"></span>
+                        </td>
+                        <td th:text="${#temporals.format(b.createdAt, 'dd.MM.yyyy HH:mm')}">01.01.2024</td>
+                        <td>
+                            <a th:href="@{/admin/broadcasts/{id}(id=${b.id})}" class="btn btn-sm">Деталі</a>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+            <p th:if="${broadcasts == null or broadcasts.isEmpty()}" class="empty-state">Немає розсилок</p>
+        </div>
+    </div>
+</div>
+</body>
+</html>

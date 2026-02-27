@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<div th:fragment="table">
+    <table class="table sortable" th:if="${transactions != null and !transactions.isEmpty()}">
+        <thead>
+            <tr>
+                <th data-sort="number">ID</th>
+                <th data-sort="date">Дата</th>
+                <th data-sort="text">Клієнт</th>
+                <th data-sort="currency">Сума</th>
+                <th data-sort="currency">Оплачено</th>
+                <th data-sort="currency">Бонуси</th>
+                <th data-sort="currency">Знижка</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr th:each="tx : ${transactions}">
+                <td th:text="${tx.transactionId}">1</td>
+                <td th:text="${tx.dateClose}">2024-01-01</td>
+                <td>
+                    <a th:if="${tx.clientId != null}" th:href="@{/admin/poster-clients/{id}(id=${tx.clientId})}" th:text="${tx.clientFullName}">Guest</a>
+                    <span th:if="${tx.clientId == null}" th:text="${tx.clientFullName}">Guest</span>
+                </td>
+                <td th:text="${#numbers.formatDecimal(tx.sumInHryvnia, 1, 2)} + ' грн'">0 грн</td>
+                <td th:text="${#numbers.formatDecimal(tx.payedSumInHryvnia, 1, 2)} + ' грн'">0 грн</td>
+                <td>
+                    <span th:if="${tx.bonusEarnedInHryvnia.compareTo(T(java.math.BigDecimal).ZERO) > 0}" class="bonus-earned" th:text="'+' + ${#numbers.formatDecimal(tx.bonusEarnedInHryvnia, 1, 2)}">+10</span>
+                    <span th:if="${tx.payedBonusInHryvnia.compareTo(T(java.math.BigDecimal).ZERO) > 0}" class="bonus-spent" th:text="'-' + ${#numbers.formatDecimal(tx.payedBonusInHryvnia, 1, 2)}">-5</span>
+                </td>
+                <td th:text="${tx.discountInHryvnia.compareTo(T(java.math.BigDecimal).ZERO) > 0 ? #numbers.formatDecimal(tx.discountInHryvnia, 1, 2) + ' грн' : '-'}">-</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <p th:if="${transactions == null or transactions.isEmpty()}" class="empty-state">
+        Транзакцій за вказаний період не знайдено
+    </p>
+
+    <!-- Pagination -->
+    <div class="pagination" th:if="${transactions != null and transactions.size() >= 50}">
+        <a th:if="${currentPage > 0}"
+           th:href="@{/admin/transactions(dateFrom=${dateFrom}, dateTo=${dateTo}, clientId=${clientId}, page=${currentPage - 1})}"
+           class="btn btn-sm">&laquo; Попередня</a>
+
+        <span class="pagination-info">Сторінка <span th:text="${currentPage + 1}">1</span></span>
+
+        <a th:href="@{/admin/transactions(dateFrom=${dateFrom}, dateTo=${dateTo}, clientId=${clientId}, page=${currentPage + 1})}"
+           class="btn btn-sm">Наступна &raquo;</a>
+    </div>
+</div>
+</body>
+</html>

@@ -107,4 +107,8 @@ public class BroadcastService {
     public List<BroadcastJob> getRecentBroadcasts(Long createdBy) {
         return broadcastJobRepository.findByCreatedByOrderByCreatedAtDesc(createdBy);
     }
+
+    public List<BroadcastJob> getAllBroadcasts() {
+        return broadcastJobRepository.findAllByOrderByCreatedAtDesc();
+    }
 }

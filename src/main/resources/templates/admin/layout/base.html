@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:fragment="layout(content, title)">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="${title} + ' | Loyalty Admin'">Loyalty Admin</title>
+    <link rel="stylesheet" th:href="@{/admin/css/admin.css}">
+    <script src="/webjars/htmx.org/2.0.4/dist/htmx.min.js"></script>
+</head>
+<body>
+    <div class="admin-layout">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h1 class="logo">Loyalty Bot</h1>
+                <span class="logo-subtitle">Admin Panel</span>
+            </div>
+
+            <nav class="sidebar-nav">
+                <a th:href="@{/admin/dashboard}" th:classappend="${activePage == 'dashboard'} ? 'active' : ''">
+                    <span class="nav-icon">&#128200;</span>
+                    Dashboard
+                </a>
+                <a th:href="@{/admin/customers}" th:classappend="${activePage == 'customers'} ? 'active' : ''">
+                    <span class="nav-icon">&#128101;</span>
+                    Клієнти TG
+                </a>
+                <a th:href="@{/admin/poster-clients}" th:classappend="${activePage == 'poster-clients'} ? 'active' : ''">
+                    <span class="nav-icon">&#127869;</span>
+                    Клієнти Poster
+                </a>
+                <a th:href="@{/admin/transactions}" th:classappend="${activePage == 'transactions'} ? 'active' : ''">
+                    <span class="nav-icon">&#128179;</span>
+                    Транзакції
+                </a>
+                <a th:href="@{/admin/bonuses}" th:classappend="${activePage == 'bonuses'} ? 'active' : ''">
+                    <span class="nav-icon">&#127873;</span>
+                    Бонуси
+                </a>
+                <a th:href="@{/admin/discounts}" th:classappend="${activePage == 'discounts'} ? 'active' : ''">
+                    <span class="nav-icon">&#128176;</span>
+                    Знижки
+                </a>
+                <a th:href="@{/admin/broadcasts}" th:classappend="${activePage == 'broadcasts'} ? 'active' : ''">
+                    <span class="nav-icon">&#128227;</span>
+                    Розсилки
+                </a>
+                <a th:href="@{/admin/sync}" th:classappend="${activePage == 'sync'} ? 'active' : ''">
+                    <span class="nav-icon">&#128260;</span>
+                    Синхронізація
+                </a>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="admin-info" th:if="${admin != null}">
+                    <img th:if="${admin.photoUrl != null}" th:src="${admin.photoUrl}" alt="Avatar" class="admin-avatar">
+                    <span th:text="${admin.displayName}">Admin</span>
+                </div>
+                <a th:href="@{/admin/logout}" class="logout-btn">Вийти</a>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div th:replace="${content}"></div>
+        </main>
+    </div>
+
+    <script th:src="@{/admin/js/admin.js}"></script>
+</body>
+</html>

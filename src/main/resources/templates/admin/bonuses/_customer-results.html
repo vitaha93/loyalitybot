@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<div th:fragment="results">
+    <ul class="search-results" th:if="${customers != null and !customers.isEmpty()}">
+        <li th:each="c : ${customers}"
+            th:data-id="${c.id}"
+            th:data-name="${c.displayName}"
+            class="search-result-item"
+            onclick="selectCustomer(this)">
+            <span th:text="${c.displayName}">Customer</span>
+            <small th:text="${c.phone ?: c.telegramUsername}">info</small>
+        </li>
+    </ul>
+    <p th:if="${customers == null or customers.isEmpty()}" class="no-results">Нічого не знайдено</p>
+</div>
+</body>
+</html>

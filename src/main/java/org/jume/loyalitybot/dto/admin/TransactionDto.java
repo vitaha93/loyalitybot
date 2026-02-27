@@ -1,0 +1,109 @@
+package org.jume.loyalitybot.dto.admin;
+
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import lombok.AllArgsConstructor;
+
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.List;
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@JsonIgnoreProperties(ignoreUnknown = true)
+public class TransactionDto {
+
+    @JsonProperty("transaction_id")
+    private Long transactionId;
+
+    @JsonProperty("client_id")
+    private Long clientId;
+
+    @JsonProperty("client_firstname")
+    private String clientFirstName;
+
+    @JsonProperty("client_lastname")
+    private String clientLastName;
+
+    @JsonProperty("date_close")
+    private String dateClose;
+
+    @JsonProperty("sum")
+    private BigDecimal sum;
+
+    @JsonProperty("payed_sum")
+    private BigDecimal payedSum;
+
+    @JsonProperty("payed_bonus")
+    private BigDecimal payedBonus;
+
+    @JsonProperty("bonus")
+    private BigDecimal bonusEarned;
+
+    @JsonProperty("discount")
+    private BigDecimal discount;
+
+    @JsonProperty("products")
+    private List<TransactionProduct> products;
+
+    private static final BigDecimal HUNDRED = BigDecimal.valueOf(100);
+
+    public String getClientFullName() {
+        if (clientFirstName != null && clientLastName != null) {
+            return clientFirstName + " " + clientLastName;
+        }
+        return clientFirstName != null ? clientFirstName : "Guest";
+    }
+
+    // Convert from kopecks to hryvnia
+    public BigDecimal getSumInHryvnia() {
+        return toHryvnia(sum);
+    }
+
+    public BigDecimal getPayedSumInHryvnia() {
+        return toHryvnia(payedSum);
+    }
+
+    public BigDecimal getPayedBonusInHryvnia() {
+        return toHryvnia(payedBonus);
+    }
+
+    public BigDecimal getBonusEarnedInHryvnia() {
+        return toHryvnia(bonusEarned);
+    }
+
+    public BigDecimal getDiscountInHryvnia() {
+        return toHryvnia(discount);
+    }
+
+    private BigDecimal toHryvnia(BigDecimal kopecks) {
+        if (kopecks == null) return BigDecimal.ZERO;
+        return kopecks.divide(HUNDRED, 2, java.math.RoundingMode.HALF_UP);
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class TransactionProduct {
+        @JsonProperty("product_id")
+        private Long productId;
+
+        @JsonProperty("product_name")
+        private String productName;
+
+        @JsonProperty("count")
+        private Integer count;
+
+        @JsonProperty("price")
+        private BigDecimal price;
+
+        public BigDecimal getPriceInHryvnia() {
+            if (price == null) return BigDecimal.ZERO;
+            return price.divide(BigDecimal.valueOf(100), 2, java.math.RoundingMode.HALF_UP);
+        }
+    }
+}

@@ -50,6 +50,12 @@ public class PosterClientDto {
     @JsonProperty("total_payed_sum")
     private BigDecimal totalPayedSum;
 
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    public BigDecimal getTotalPayedSumInHryvnia() {
+        if (totalPayedSum == null) return BigDecimal.ZERO;
+        return totalPayedSum.divide(BigDecimal.valueOf(100), 2, java.math.RoundingMode.HALF_UP);
+    }
+
     @JsonProperty("date_activale")
     private String dateActivate;
 

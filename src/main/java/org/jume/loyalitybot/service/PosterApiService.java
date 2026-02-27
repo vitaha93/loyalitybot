@@ -1,5 +1,6 @@
 package org.jume.loyalitybot.service;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -7,12 +8,19 @@ import lombok.extern.slf4j.Slf4j;
 import org.jume.loyalitybot.config.CacheConfig;
 import org.jume.loyalitybot.config.PosterApiConfig;
 import org.jume.loyalitybot.dto.PosterClientDto;
+import org.jume.loyalitybot.dto.admin.ProductDto;
+import org.jume.loyalitybot.dto.admin.TransactionDto;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -172,6 +180,221 @@ public class PosterApiService {
             log.error("Poster API health check failed", e);
             return false;
         }
+    }
+
+    @Cacheable(value = CacheConfig.POSTER_CLIENTS_CACHE, unless = "#result.isEmpty()")
+    public List<PosterClientDto> getAllClients() {
+        log.debug("Fetching all clients from Poster");
+        try {
+            String response = posterRestClient.get()
+                    .uri(uriBuilder -> uriBuilder
+                            .path("/clients.getClients")
+                            .queryParam("token", config.getToken())
+                            .build())
+                    .retrieve()
+                    .body(String.class);
+
+            JsonNode root = objectMapper.readTree(response);
+            JsonNode responseNode = root.path("response");
+
+            if (responseNode.isArray()) {
+                List<PosterClientDto> clients = new ArrayList<>();
+                for (JsonNode clientNode : responseNode) {
+                    clients.add(objectMapper.treeToValue(clientNode, PosterClientDto.class));
+                }
+                log.info("Fetched {} clients from Poster", clients.size());
+                return clients;
+            }
+
+            return Collections.emptyList();
+        } catch (Exception e) {
+            log.error("Error fetching all clients from Poster", e);
+            return Collections.emptyList();
+        }
+    }
+
+    @Cacheable(value = CacheConfig.POSTER_TRANSACTIONS_CACHE, key = "#dateFrom.toString() + '_' + #dateTo.toString()")
+    public List<TransactionDto> getAllTransactions(LocalDate dateFrom, LocalDate dateTo) {
+        log.debug("Fetching transactions from {} to {}", dateFrom, dateTo);
+        try {
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMdd");
+            String response = posterRestClient.get()
+                    .uri(uriBuilder -> uriBuilder
+                            .path("/dash.getTransactions")
+                            .queryParam("token", config.getToken())
+                            .queryParam("date_from", dateFrom.format(formatter))
+                            .queryParam("date_to", dateTo.format(formatter))
+                            .build())
+                    .retrieve()
+                    .body(String.class);
+
+            JsonNode root = objectMapper.readTree(response);
+            JsonNode responseNode = root.path("response");
+
+            if (responseNode.isArray()) {
+                List<TransactionDto> transactions = new ArrayList<>();
+                for (JsonNode txNode : responseNode) {
+                    transactions.add(objectMapper.treeToValue(txNode, TransactionDto.class));
+                }
+                log.info("Fetched {} transactions from {} to {}", transactions.size(), dateFrom, dateTo);
+                return transactions;
+            }
+
+            return Collections.emptyList();
+        } catch (Exception e) {
+            log.error("Error fetching transactions from Poster", e);
+            return Collections.emptyList();
+        }
+    }
+
+    public List<TransactionDto> getClientTransactions(Long clientId, LocalDate dateFrom, LocalDate dateTo) {
+        log.debug("Fetching transactions for client {} from {} to {}", clientId, dateFrom, dateTo);
+        try {
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMdd");
+            String response = posterRestClient.get()
+                    .uri(uriBuilder -> uriBuilder
+                            .path("/dash.getTransactions")
+                            .queryParam("token", config.getToken())
+                            .queryParam("client_id", clientId)
+                            .queryParam("date_from", dateFrom.format(formatter))
+                            .queryParam("date_to", dateTo.format(formatter))
+                            .build())
+                    .retrieve()
+                    .body(String.class);
+
+            JsonNode root = objectMapper.readTree(response);
+            JsonNode responseNode = root.path("response");
+
+            if (responseNode.isArray()) {
+                List<TransactionDto> transactions = new ArrayList<>();
+                for (JsonNode txNode : responseNode) {
+                    transactions.add(objectMapper.treeToValue(txNode, TransactionDto.class));
+                }
+                return transactions;
+            }
+
+            return Collections.emptyList();
+        } catch (Exception e) {
+            log.error("Error fetching client {} transactions from Poster", clientId, e);
+            return Collections.emptyList();
+        }
+    }
+
+    @Cacheable(value = CacheConfig.POSTER_PRODUCTS_CACHE, unless = "#result.isEmpty()")
+    public List<ProductDto> getProducts() {
+        log.debug("Fetching products from Poster");
+        try {
+            String response = posterRestClient.get()
+                    .uri(uriBuilder -> uriBuilder
+                            .path("/menu.getProducts")
+                            .queryParam("token", config.getToken())
+                            .build())
+                    .retrieve()
+                    .body(String.class);
+
+            JsonNode root = objectMapper.readTree(response);
+            JsonNode responseNode = root.path("response");
+
+            if (responseNode.isArray()) {
+                List<ProductDto> products = new ArrayList<>();
+                for (JsonNode productNode : responseNode) {
+                    products.add(objectMapper.treeToValue(productNode, ProductDto.class));
+                }
+                log.info("Fetched {} products from Poster", products.size());
+                return products;
+            }
+
+            return Collections.emptyList();
+        } catch (Exception e) {
+            log.error("Error fetching products from Poster", e);
+            return Collections.emptyList();
+        }
+    }
+
+    @CacheEvict(value = CacheConfig.POSTER_CLIENT_CACHE, key = "#clientId")
+    public boolean setClientDiscount(Long clientId, Integer discountPercent) {
+        log.info("Setting {}% discount for client {}", discountPercent, clientId);
+        try {
+            String response = posterRestClient.post()
+                    .uri(uriBuilder -> uriBuilder
+                            .path("/clients.updateClient")
+                            .queryParam("token", config.getToken())
+                            .queryParam("client_id", clientId)
+                            .queryParam("discount_per", discountPercent)
+                            .build())
+                    .retrieve()
+                    .body(String.class);
+
+            JsonNode root = objectMapper.readTree(response);
+            boolean success = root.has("response") && !root.path("response").isNull();
+
+            if (success) {
+                log.info("Successfully set {}% discount for client {}", discountPercent, clientId);
+            } else {
+                log.warn("Failed to set discount for client {}", clientId);
+            }
+            return success;
+        } catch (Exception e) {
+            log.error("Error setting discount for client {}", clientId, e);
+            return false;
+        }
+    }
+
+    /**
+     * Fetch products for a specific transaction
+     */
+    @Cacheable(value = CacheConfig.POSTER_TX_PRODUCTS_CACHE, key = "#transactionId")
+    public List<TransactionDto.TransactionProduct> getTransactionProducts(Long transactionId) {
+        log.debug("Fetching products for transaction {}", transactionId);
+        try {
+            String response = posterRestClient.get()
+                    .uri(uriBuilder -> uriBuilder
+                            .path("/dash.getTransactionProducts")
+                            .queryParam("token", config.getToken())
+                            .queryParam("transaction_id", transactionId)
+                            .build())
+                    .retrieve()
+                    .body(String.class);
+
+            JsonNode root = objectMapper.readTree(response);
+            JsonNode responseNode = root.path("response");
+
+            if (responseNode.isArray()) {
+                List<TransactionDto.TransactionProduct> products = new ArrayList<>();
+                for (JsonNode productNode : responseNode) {
+                    products.add(objectMapper.treeToValue(productNode, TransactionDto.TransactionProduct.class));
+                }
+                return products;
+            }
+
+            return Collections.emptyList();
+        } catch (Exception e) {
+            log.error("Error fetching products for transaction {}", transactionId, e);
+            return Collections.emptyList();
+        }
+    }
+
+    /**
+     * Get client transactions with products (limited to recent transactions for performance)
+     */
+    public List<TransactionDto> getClientTransactionsWithProducts(Long clientId, LocalDate dateFrom, LocalDate dateTo, int limit) {
+        List<TransactionDto> transactions = getClientTransactions(clientId, dateFrom, dateTo);
+        log.info("Fetched {} transactions for client {} from {} to {}", transactions.size(), clientId, dateFrom, dateTo);
+
+        // Sort by date descending (most recent first) and limit
+        return transactions.stream()
+                .sorted((a, b) -> {
+                    if (a.getDateClose() == null) return 1;
+                    if (b.getDateClose() == null) return -1;
+                    return b.getDateClose().compareTo(a.getDateClose());
+                })
+                .limit(limit)
+                .peek(tx -> {
+                    if (tx.getTransactionId() != null) {
+                        tx.setProducts(getTransactionProducts(tx.getTransactionId()));
+                    }
+                })
+                .toList();
     }
 
     private String normalizePhone(String phone) {

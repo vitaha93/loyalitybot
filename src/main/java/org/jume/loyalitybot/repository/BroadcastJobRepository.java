@@ -19,5 +19,7 @@ public interface BroadcastJobRepository extends JpaRepository<BroadcastJob, Long
 
     List<BroadcastJob> findByCreatedByOrderByCreatedAtDesc(Long createdBy);
 
+    List<BroadcastJob> findAllByOrderByCreatedAtDesc();
+
     long countByStatus(BroadcastStatus status);
 }

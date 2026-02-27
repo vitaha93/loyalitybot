@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{admin/layout/base :: layout(~{::content}, 'Клієнти Poster')}">
+<body>
+<div th:fragment="content">
+    <div class="page-header">
+        <h1>Клієнти Poster</h1>
+    </div>
+
+    <!-- Search and Sort -->
+    <div class="card filter-card">
+        <div class="card-body">
+            <form class="filter-form" method="get">
+                <div class="filter-row">
+                    <div class="filter-group">
+                        <label for="search">Пошук</label>
+                        <input type="text" id="search" name="search" th:value="${search}"
+                               placeholder="Ім'я, телефон, ID...">
+                    </div>
+                    <div class="filter-group">
+                        <label for="sort">Сортувати</label>
+                        <select id="sort" name="sort">
+                            <option value="totalPayedSum" th:selected="${sort == 'totalPayedSum'}">За витратами</option>
+                            <option value="bonus" th:selected="${sort == 'bonus'}">За бонусами</option>
+                            <option value="name" th:selected="${sort == 'name'}">За ім'ям</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label for="order">Порядок</label>
+                        <select id="order" name="order">
+                            <option value="desc" th:selected="${order == 'desc'}">Спадання</option>
+                            <option value="asc" th:selected="${order == 'asc'}">Зростання</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Фільтрувати</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Clients Table -->
+    <div class="card">
+        <div class="card-header">
+            <h2>Всього: <span th:text="${clients.size()}">0</span> клієнтів</h2>
+        </div>
+        <div class="card-body">
+            <table class="table sortable" th:if="${clients != null and !clients.isEmpty()}">
+                <thead>
+                    <tr>
+                        <th data-sort="number">ID</th>
+                        <th data-sort="text">Ім'я</th>
+                        <th data-sort="text">Телефон</th>
+                        <th data-sort="currency">Витрачено</th>
+                        <th data-sort="currency">Бонуси</th>
+                        <th data-sort="number">Знижка</th>
+                        <th>Дії</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="client : ${clients}">
+                        <td th:text="${client.clientId}">1</td>
+                        <td>
+                            <span th:text="${client.firstName != null ? client.firstName : ''}">First</span>
+                            <span th:text="${client.lastName != null ? client.lastName : ''}">Last</span>
+                        </td>
+                        <td th:text="${client.normalizedPhone ?: '-'}">-</td>
+                        <td th:text="${#numbers.formatDecimal(client.totalPayedSumInHryvnia, 1, 2)} + ' грн'">0 грн</td>
+                        <td th:text="${#numbers.formatDecimal(client.bonusInHryvnia, 1, 2)} + ' грн'">0 грн</td>
+                        <td th:text="${client.discountPercent != null ? client.discountPercent + '%' : '-'}">-</td>
+                        <td>
+                            <a th:href="@{/admin/poster-clients/{id}(id=${client.clientId})}" class="btn btn-sm">Деталі</a>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+            <p th:if="${clients == null or clients.isEmpty()}" class="empty-state">Клієнтів не знайдено</p>
+        </div>
+    </div>
+</div>
+</body>
+</html>

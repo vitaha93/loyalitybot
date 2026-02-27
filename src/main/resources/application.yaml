@@ -2,6 +2,13 @@ spring:
   application:
     name: loyalitybot
 
+  thymeleaf:
+    cache: false
+    prefix: classpath:/templates/
+    suffix: .html
+    mode: HTML
+    encoding: UTF-8
+
   datasource:
     url: ${DATABASE_URL:jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:loyaltybot}}
     username: ${DB_USERNAME:postgres}

@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{admin/layout/base :: layout(~{::content}, 'Знижки')}">
+<body>
+<div th:fragment="content">
+    <div class="page-header">
+        <h1>Персональні знижки</h1>
+        <a th:href="@{/admin/discounts/create}" class="btn btn-primary">+ Створити знижку</a>
+    </div>
+
+    <div th:if="${success}" class="alert alert-success" th:text="${success}"></div>
+    <div th:if="${error}" class="alert alert-error" th:text="${error}"></div>
+
+    <!-- Active Discounts -->
+    <div class="card">
+        <div class="card-header">
+            <h2>Активні знижки</h2>
+        </div>
+        <div class="card-body">
+            <table class="table sortable" th:if="${activeDiscounts != null and !activeDiscounts.isEmpty()}">
+                <thead>
+                    <tr>
+                        <th data-sort="text">Клієнт</th>
+                        <th data-sort="number">Знижка</th>
+                        <th data-sort="date">Діє з</th>
+                        <th data-sort="date">Діє до</th>
+                        <th data-sort="text">Причина</th>
+                        <th>Дії</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="d : ${activeDiscounts}">
+                        <td>
+                            <a th:href="@{/admin/customers/{id}(id=${d.customer.id})}" th:text="${d.customer.displayName}">
+                                Customer
+                            </a>
+                        </td>
+                        <td><span class="badge badge-success" th:text="${d.discountPercent} + '%'">10%</span></td>
+                        <td th:text="${d.validFrom}">2024-01-01</td>
+                        <td th:text="${d.validUntil}">2024-12-31</td>
+                        <td th:text="${d.reason ?: '-'}">-</td>
+                        <td>
+                            <form th:action="@{/admin/discounts/{id}/deactivate(id=${d.id})}" method="post" style="display:inline">
+                                <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Деактивувати знижку?')">
+                                    Деактивувати
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+            <p th:if="${activeDiscounts == null or activeDiscounts.isEmpty()}" class="empty-state">Немає активних знижок</p>
+        </div>
+    </div>
+
+    <!-- Expired Discounts -->
+    <div class="card" th:if="${expiredDiscounts != null and !expiredDiscounts.isEmpty()}">
+        <div class="card-header">
+            <h2>Архів знижок</h2>
+        </div>
+        <div class="card-body">
+            <table class="table sortable">
+                <thead>
+                    <tr>
+                        <th data-sort="text">Клієнт</th>
+                        <th data-sort="number">Знижка</th>
+                        <th data-sort="date">Діяла до</th>
+                        <th data-sort="text">Причина</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="d : ${expiredDiscounts}">
+                        <td>
+                            <a th:href="@{/admin/customers/{id}(id=${d.customer.id})}" th:text="${d.customer.displayName}">
+                                Customer
+                            </a>
+                        </td>
+                        <td><span class="badge badge-secondary" th:text="${d.discountPercent} + '%'">10%</span></td>
+                        <td th:text="${d.validUntil}">2024-12-31</td>
+                        <td th:text="${d.reason ?: '-'}">-</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{admin/layout/base :: layout(~{::content}, 'Клієнти')}">
+<body>
+<div th:fragment="content">
+    <div class="page-header">
+        <h1>Клієнти</h1>
+    </div>
+
+    <!-- Search -->
+    <div class="search-bar">
+        <input type="text"
+               id="search-input"
+               th:value="${search}"
+               placeholder="Пошук по імені, телефону, username..."
+               hx-get="/admin/customers/_table"
+               hx-trigger="keyup changed delay:300ms"
+               hx-target="#customers-table"
+               hx-include="this"
+               name="search">
+    </div>
+
+    <!-- Customers Table -->
+    <div class="card">
+        <div class="card-body">
+            <div id="customers-table">
+                <div th:replace="~{admin/customers/_table :: table}"></div>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

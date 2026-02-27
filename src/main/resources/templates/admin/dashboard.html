@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{admin/layout/base :: layout(~{::content}, 'Dashboard')}">
+<body>
+<div th:fragment="content">
+    <div class="page-header">
+        <h1>Dashboard</h1>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon customers">&#128101;</div>
+            <div class="stat-content">
+                <span class="stat-value" th:text="${stats.totalCustomers}">0</span>
+                <span class="stat-label">Всього клієнтів</span>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon active">&#9989;</div>
+            <div class="stat-content">
+                <span class="stat-value" th:text="${stats.activeCustomers}">0</span>
+                <span class="stat-label">Активних</span>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon pending">&#9203;</div>
+            <div class="stat-content">
+                <span class="stat-value" th:text="${stats.pendingCustomers}">0</span>
+                <span class="stat-label">Очікують</span>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon revenue">&#128176;</div>
+            <div class="stat-content">
+                <span class="stat-value" th:text="${#numbers.formatDecimal(stats.totalRevenue, 1, 0)} + ' грн'">0 грн</span>
+                <span class="stat-label">Виручка за місяць</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Transaction Stats -->
+    <div class="stats-grid stats-grid-3">
+        <div class="stat-card small">
+            <div class="stat-content">
+                <span class="stat-value" th:text="${stats.transactionsToday}">0</span>
+                <span class="stat-label">Транзакцій сьогодні</span>
+            </div>
+        </div>
+
+        <div class="stat-card small">
+            <div class="stat-content">
+                <span class="stat-value" th:text="${stats.transactionsThisWeek}">0</span>
+                <span class="stat-label">За тиждень</span>
+            </div>
+        </div>
+
+        <div class="stat-card small">
+            <div class="stat-content">
+                <span class="stat-value" th:text="${stats.transactionsThisMonth}">0</span>
+                <span class="stat-label">За місяць</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="dashboard-grid">
+        <!-- Top Customers -->
+        <div class="card">
+            <div class="card-header">
+                <h2>Топ клієнтів за витратами</h2>
+            </div>
+            <div class="card-body">
+                <table class="table sortable" th:if="${topCustomers != null and !topCustomers.isEmpty()}">
+                    <thead>
+                        <tr>
+                            <th data-sort="text">Клієнт</th>
+                            <th data-sort="currency">Витрачено</th>
+                            <th data-sort="currency">Бонуси</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="cs : ${topCustomers}">
+                            <td>
+                                <a th:if="${cs.customer != null}" th:href="@{/admin/customers/{id}(id=${cs.customer.id})}" th:text="${cs.displayName}">
+                                    Customer
+                                </a>
+                                <a th:if="${cs.customer == null}" th:href="@{/admin/poster-clients/{id}(id=${cs.posterClient.clientId})}" th:text="${cs.displayName}">
+                                    Customer
+                                </a>
+                            </td>
+                            <td th:text="${#numbers.formatDecimal(cs.posterClient.totalPayedSumInHryvnia, 1, 2)} + ' грн'">0 грн</td>
+                            <td th:text="${#numbers.formatDecimal(cs.posterClient.bonusInHryvnia, 1, 2)} + ' грн'">0 грн</td>
+                        </tr>
+                    </tbody>
+                </table>
+                <p th:if="${topCustomers == null or topCustomers.isEmpty()}" class="empty-state">Немає даних</p>
+            </div>
+        </div>
+
+        <!-- Recent Transactions -->
+        <div class="card">
+            <div class="card-header">
+                <h2>Останні транзакції</h2>
+                <a th:href="@{/admin/transactions}" class="btn btn-sm">Всі транзакції</a>
+            </div>
+            <div class="card-body">
+                <table class="table sortable" th:if="${recentTransactions != null and !recentTransactions.isEmpty()}">
+                    <thead>
+                        <tr>
+                            <th data-sort="date">Дата</th>
+                            <th data-sort="text">Клієнт</th>
+                            <th data-sort="currency">Сума</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="tx : ${recentTransactions}">
+                            <td th:text="${tx.dateClose}">-</td>
+                            <td>
+                                <a th:if="${tx.clientId != null}" th:href="@{/admin/poster-clients/{id}(id=${tx.clientId})}" th:text="${tx.clientFullName}">-</a>
+                                <span th:if="${tx.clientId == null}" th:text="${tx.clientFullName}">-</span>
+                            </td>
+                            <td th:text="${#numbers.formatDecimal(tx.payedSumInHryvnia, 1, 2)} + ' грн'">0 грн</td>
+                        </tr>
+                    </tbody>
+                </table>
+                <p th:if="${recentTransactions == null or recentTransactions.isEmpty()}" class="empty-state">Немає транзакцій</p>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

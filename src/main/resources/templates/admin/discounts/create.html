@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{admin/layout/base :: layout(~{::content}, 'Створити знижку')}">
+<body>
+<div th:fragment="content">
+    <div class="page-header">
+        <a th:href="@{/admin/discounts}" class="btn btn-back">&larr; Назад</a>
+        <h1>Створити персональну знижку</h1>
+    </div>
+
+    <div th:if="${error}" class="alert alert-error" th:text="${error}"></div>
+
+    <div class="card">
+        <div class="card-body">
+            <form th:action="@{/admin/discounts/create}" method="post" class="form">
+                <div class="form-group">
+                    <label for="customerId">Клієнт</label>
+                    <div th:if="${selectedCustomer != null}">
+                        <input type="hidden" name="customerId" th:value="${selectedCustomer.id}">
+                        <p class="selected-customer">
+                            <strong th:text="${selectedCustomer.displayName}">Customer</strong>
+                            <small th:text="${selectedCustomer.phone ?: '@' + selectedCustomer.telegramUsername}">info</small>
+                            <a th:href="@{/admin/discounts/create}" class="btn btn-sm">Змінити</a>
+                        </p>
+                    </div>
+                    <div th:if="${selectedCustomer == null}">
+                        <input type="text"
+                               id="customer-search"
+                               placeholder="Пошук клієнта..."
+                               hx-get="/admin/bonuses/search-customer"
+                               hx-trigger="keyup changed delay:300ms"
+                               hx-target="#customer-results"
+                               name="query"
+                               autocomplete="off">
+                        <div id="customer-results"></div>
+                        <input type="hidden" name="customerId" id="selected-customer-id" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="discountPercent">Відсоток знижки</label>
+                    <input type="number" id="discountPercent" name="discountPercent"
+                           min="1" max="100" required placeholder="10">
+                    <small>Від 1% до 100%</small>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="validFrom">Діє з</label>
+                        <input type="date" id="validFrom" name="validFrom"
+                               th:value="${#temporals.format(#temporals.createNow(), 'yyyy-MM-dd')}">
+                        <small>За замовчуванням - сьогодні</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="validUntil">Діє до</label>
+                        <input type="date" id="validUntil" name="validUntil" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="reason">Причина</label>
+                    <textarea id="reason" name="reason" rows="3" placeholder="Опційно: причина надання знижки"></textarea>
+                </div>
+
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">Створити знижку</button>
+                    <a th:href="@{/admin/discounts}" class="btn">Скасувати</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+</body>
+</html>
