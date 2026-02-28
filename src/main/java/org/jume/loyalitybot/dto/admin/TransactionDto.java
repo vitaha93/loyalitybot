@@ -7,7 +7,10 @@ import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 @Data
@@ -51,11 +54,31 @@ public class TransactionDto {
 
     private static final BigDecimal HUNDRED = BigDecimal.valueOf(100);
 
+    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm");
+
     public String getClientFullName() {
         if (clientFirstName != null && clientLastName != null) {
             return clientFirstName + " " + clientLastName;
         }
         return clientFirstName != null ? clientFirstName : "Guest";
+    }
+
+    public String getFormattedDate() {
+        if (dateClose == null || dateClose.isBlank()) {
+            return "-";
+        }
+        try {
+            // Try parsing as Unix timestamp (milliseconds)
+            long timestamp = Long.parseLong(dateClose);
+            LocalDateTime dateTime = LocalDateTime.ofInstant(
+                Instant.ofEpochMilli(timestamp),
+                ZoneId.of("Europe/Kyiv")
+            );
+            return dateTime.format(DATE_FORMATTER);
+        } catch (NumberFormatException e) {
+            // Return raw value if can't parse
+            return dateClose;
+        }
     }
 
     // Convert from kopecks to hryvnia

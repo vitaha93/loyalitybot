@@ -56,27 +56,29 @@ public class PosterWebhookController {
             return;
         }
 
-        BigDecimal bonusAdded = data.getBonusAdded();
-        if (bonusAdded == null || bonusAdded.compareTo(BigDecimal.ZERO) <= 0) {
-            log.debug("No bonus added in transaction, skipping notification");
-            return;
-        }
-
         Optional<Customer> customerOpt = customerService.findByPosterClientId(data.getClientId());
-
         if (customerOpt.isEmpty()) {
             log.debug("No registered customer for Poster client {}", data.getClientId());
             return;
         }
 
         Customer customer = customerOpt.get();
-        log.info("Creating bonus notification for customer {} (Poster: {}), bonus: {}",
-                customer.getTelegramId(), data.getClientId(), bonusAdded);
 
-        notificationRetryService.createNotification(
-                customer,
-                bonusAdded,
-                data.getTransactionId()
-        );
+        // Handle bonus earned
+        BigDecimal bonusAdded = data.getBonusAdded();
+        if (bonusAdded != null && bonusAdded.compareTo(BigDecimal.ZERO) > 0) {
+            log.info("Creating bonus earned notification for customer {} (Poster: {}), bonus: +{}",
+                    customer.getTelegramId(), data.getClientId(), bonusAdded);
+            notificationRetryService.createNotification(customer, bonusAdded, data.getTransactionId());
+        }
+
+        // Handle bonus spent
+        BigDecimal bonusUsed = data.getBonusUsed();
+        if (bonusUsed != null && bonusUsed.compareTo(BigDecimal.ZERO) > 0) {
+            log.info("Creating bonus spent notification for customer {} (Poster: {}), bonus: -{}",
+                    customer.getTelegramId(), data.getClientId(), bonusUsed);
+            // Use negative value to indicate spent
+            notificationRetryService.createNotification(customer, bonusUsed.negate(), data.getTransactionId());
+        }
     }
 }

@@ -29,9 +29,9 @@ public class TransactionSyncService {
     private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     /**
-     * Sync transactions every 15 minutes
+     * Sync transactions daily at 00:00 UTC
      */
-    @Scheduled(fixedRate = 15 * 60 * 1000, initialDelay = 30 * 1000)
+    @Scheduled(cron = "0 0 0 * * *", zone = "UTC")
     public void scheduledSync() {
         log.info("Starting scheduled transaction sync");
         syncTransactions();

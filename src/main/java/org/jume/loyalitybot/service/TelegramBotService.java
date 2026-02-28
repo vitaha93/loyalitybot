@@ -36,15 +36,30 @@ public class TelegramBotService {
     }
 
     public void sendBonusNotification(Long chatId, String customerName, BigDecimal bonusAmount, BigDecimal totalBonus) {
-        String message = String.format(
-                "<b>Дякуємо за покупку!</b>\n\n" +
-                "Нараховано бонусів: <b>%s %s</b>\n" +
-                "Ваш баланс: <b>%s %s</b>",
-                bonusAmount.stripTrailingZeros().toPlainString(),
-                loyaltyConfig.getCurrencySymbol(),
-                totalBonus.stripTrailingZeros().toPlainString(),
-                loyaltyConfig.getCurrencySymbol()
-        );
+        String message;
+        if (bonusAmount.compareTo(BigDecimal.ZERO) > 0) {
+            // Bonus earned
+            message = String.format(
+                    "<b>Дякуємо за покупку!</b>\n\n" +
+                    "Нараховано бонусів: <b>+%s %s</b>\n" +
+                    "Ваш баланс: <b>%s %s</b>",
+                    bonusAmount.stripTrailingZeros().toPlainString(),
+                    loyaltyConfig.getCurrencySymbol(),
+                    totalBonus.stripTrailingZeros().toPlainString(),
+                    loyaltyConfig.getCurrencySymbol()
+            );
+        } else {
+            // Bonus spent
+            message = String.format(
+                    "<b>Бонуси списано!</b>\n\n" +
+                    "Використано: <b>%s %s</b>\n" +
+                    "Залишок: <b>%s %s</b>",
+                    bonusAmount.abs().stripTrailingZeros().toPlainString(),
+                    loyaltyConfig.getCurrencySymbol(),
+                    totalBonus.stripTrailingZeros().toPlainString(),
+                    loyaltyConfig.getCurrencySymbol()
+            );
+        }
         sendMessage(chatId, message);
     }
 

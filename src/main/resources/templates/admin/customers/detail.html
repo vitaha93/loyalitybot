@@ -143,7 +143,7 @@
                     </thead>
                     <tbody>
                         <tr th:each="tx : ${transactions}">
-                            <td th:text="${tx.dateClose}">-</td>
+                            <td th:text="${tx.formattedDate}">-</td>
                             <td th:text="${#numbers.formatDecimal(tx.payedSumInHryvnia, 1, 2)} + ' грн'">0 грн</td>
                             <td th:text="${tx.bonusEarnedInHryvnia.compareTo(T(java.math.BigDecimal).ZERO) > 0 ? #numbers.formatDecimal(tx.bonusEarnedInHryvnia, 1, 2) + ' грн' : '-'}">0</td>
                             <td th:text="${tx.payedBonusInHryvnia.compareTo(T(java.math.BigDecimal).ZERO) > 0 ? #numbers.formatDecimal(tx.payedBonusInHryvnia, 1, 2) + ' грн' : '-'}">0</td>

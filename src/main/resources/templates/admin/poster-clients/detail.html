@@ -131,7 +131,7 @@
                     <tbody>
                         <tr th:each="tx : ${transactions}">
                             <td th:text="${tx.transactionId}">-</td>
-                            <td th:text="${tx.dateClose}">-</td>
+                            <td th:text="${tx.formattedDate}">-</td>
                             <td th:text="${#numbers.formatDecimal(tx.sumInHryvnia, 1, 2)} + ' грн'">0 грн</td>
                             <td th:text="${#numbers.formatDecimal(tx.payedSumInHryvnia, 1, 2)} + ' грн'">0 грн</td>
                             <td>

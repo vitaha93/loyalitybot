@@ -17,7 +17,7 @@
         <tbody>
             <tr th:each="tx : ${transactions}">
                 <td th:text="${tx.transactionId}">1</td>
-                <td th:text="${tx.dateClose}">2024-01-01</td>
+                <td th:text="${tx.formattedDate}">2024-01-01</td>
                 <td>
                     <a th:if="${tx.clientId != null}" th:href="@{/admin/poster-clients/{id}(id=${tx.clientId})}" th:text="${tx.clientFullName}">Guest</a>
                     <span th:if="${tx.clientId == null}" th:text="${tx.clientFullName}">Guest</span>
