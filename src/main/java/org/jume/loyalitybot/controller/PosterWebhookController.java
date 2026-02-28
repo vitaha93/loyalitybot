@@ -26,14 +26,19 @@ public class PosterWebhookController {
     private String webhookSecret;
 
     @PostMapping("/poster")
-    public ResponseEntity<String> onPosterWebhook(@RequestBody PosterWebhookPayload payload) {
-        log.info("Received Poster webhook: object={}, action={}, objectId={}",
-                payload.getObjectType(), payload.getAction(), payload.getObjectId());
+    public ResponseEntity<String> onPosterWebhook(@RequestBody String rawPayload) {
+        log.info("Received Poster webhook raw: {}", rawPayload);
 
         try {
+            com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+            PosterWebhookPayload payload = mapper.readValue(rawPayload, PosterWebhookPayload.class);
+
+            log.info("Parsed webhook: object={}, action={}, objectId={}, data={}",
+                    payload.getObjectType(), payload.getAction(), payload.getObjectId(), payload.getData());
+
             processWebhook(payload);
         } catch (Exception e) {
-            log.error("Error processing Poster webhook", e);
+            log.error("Error processing Poster webhook: {}", e.getMessage());
         }
 
         return ResponseEntity.ok("OK");
