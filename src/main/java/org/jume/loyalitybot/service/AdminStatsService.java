@@ -7,7 +7,10 @@ import org.jume.loyalitybot.dto.admin.DashboardStats;
 import org.jume.loyalitybot.dto.admin.ProductDto;
 import org.jume.loyalitybot.dto.admin.TransactionDto;
 import org.jume.loyalitybot.model.Customer;
+import org.jume.loyalitybot.model.PosterTransaction;
 import org.jume.loyalitybot.repository.PosterTransactionProductRepository;
+import org.jume.loyalitybot.repository.PosterTransactionRepository;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -26,6 +29,7 @@ public class AdminStatsService {
     private final CustomerService customerService;
     private final PosterApiService posterApiService;
     private final PosterTransactionProductRepository productRepository;
+    private final PosterTransactionRepository transactionRepository;
 
     public DashboardStats getDashboardStats() {
         long totalCustomers = customerService.getTotalCustomersCount();
@@ -100,13 +104,30 @@ public class AdminStatsService {
     }
 
     public List<TransactionDto> getClientTransactions(Long clientId, int limit) {
-        LocalDate today = LocalDate.now();
-        LocalDate yearAgo = today.minusYears(1);
+        // Use local database instead of Poster API for accurate client filtering
+        List<PosterTransaction> transactions = transactionRepository.findByPosterClientIdOrderByTransactionDateDesc(clientId);
 
-        return posterApiService.getClientTransactions(clientId, yearAgo, today).stream()
-            .sorted(Comparator.comparing(TransactionDto::getDateClose, Comparator.nullsLast(Comparator.reverseOrder())))
+        return transactions.stream()
             .limit(limit)
+            .map(this::toTransactionDto)
             .collect(Collectors.toList());
+    }
+
+    private TransactionDto toTransactionDto(PosterTransaction tx) {
+        TransactionDto dto = new TransactionDto();
+        dto.setTransactionId(tx.getPosterTransactionId());
+        dto.setClientId(tx.getPosterClientId());
+        dto.setClientFirstName(tx.getClientFirstName());
+        dto.setClientLastName(tx.getClientLastName());
+        dto.setDateClose(tx.getTransactionDate() != null
+            ? String.valueOf(tx.getTransactionDate().atZone(java.time.ZoneId.of("Europe/Kyiv")).toInstant().toEpochMilli())
+            : null);
+        dto.setSum(tx.getSum());
+        dto.setPayedSum(tx.getPayedSum());
+        dto.setPayedBonus(tx.getPayedBonus());
+        dto.setBonusEarned(tx.getBonusEarned());
+        dto.setDiscount(tx.getDiscount());
+        return dto;
     }
 
     public List<FavoriteProduct> getClientFavoriteProducts(Long clientId, int limit) {
