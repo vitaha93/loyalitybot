@@ -480,9 +480,88 @@
         @media (max-width: 768px) {
             .pnl-summary {
                 grid-template-columns: repeat(2, 1fr);
+                gap: 0.75rem;
             }
+
+            .pnl-summary-2 {
+                grid-template-columns: 1fr;
+            }
+
+            .pnl-card {
+                padding: 1rem;
+            }
+
+            .pnl-card-title {
+                font-size: 0.75rem;
+            }
+
+            .pnl-card-value {
+                font-size: 1.1rem;
+            }
+
             .pnl-grid {
                 grid-template-columns: 1fr;
+                gap: 1rem;
+            }
+
+            .period-buttons {
+                display: grid;
+                grid-template-columns: repeat(3, 1fr);
+                gap: 0.5rem;
+            }
+
+            .period-buttons button {
+                padding: 0.625rem 0.5rem;
+                font-size: 0.8rem;
+            }
+
+            .date-range {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .date-range input {
+                width: 100%;
+            }
+
+            .date-range span {
+                display: none;
+            }
+
+            .table th,
+            .table td {
+                padding: 0.5rem;
+                font-size: 0.8rem;
+            }
+
+            .pnl-statement .indent {
+                padding-left: 1rem;
+            }
+
+            #pnlChart {
+                height: 200px !important;
+            }
+
+            #expensesChart {
+                height: 250px !important;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .pnl-summary {
+                grid-template-columns: 1fr;
+            }
+
+            .period-buttons {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .pnl-card-value {
+                font-size: 1rem;
+            }
+
+            .total-row.net-profit {
+                font-size: 0.95rem;
             }
         }
     </style>

@@ -24,7 +24,13 @@ function selectCustomer(element) {
 
 // Mobile sidebar toggle
 function toggleSidebar() {
-    document.querySelector('.sidebar').classList.toggle('open');
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.querySelector('.sidebar-overlay');
+    const body = document.body;
+
+    sidebar.classList.toggle('open');
+    overlay.classList.toggle('active');
+    body.classList.toggle('sidebar-open');
 }
 
 // Confirm dangerous actions

@@ -9,11 +9,23 @@
 </head>
 <body>
     <div class="admin-layout">
+        <!-- Mobile Header -->
+        <header class="mobile-header">
+            <button class="menu-toggle" onclick="toggleSidebar()" aria-label="Toggle menu">
+                <span class="hamburger"></span>
+            </button>
+            <span class="mobile-title">Loyalty Bot</span>
+        </header>
+
+        <!-- Sidebar Overlay -->
+        <div class="sidebar-overlay" onclick="toggleSidebar()"></div>
+
         <!-- Sidebar -->
-        <aside class="sidebar">
+        <aside class="sidebar" id="sidebar">
             <div class="sidebar-header">
                 <h1 class="logo">Loyalty Bot</h1>
                 <span class="logo-subtitle">Admin Panel</span>
+                <button class="sidebar-close" onclick="toggleSidebar()" aria-label="Close menu">&times;</button>
             </div>
 
             <nav class="sidebar-nav">
