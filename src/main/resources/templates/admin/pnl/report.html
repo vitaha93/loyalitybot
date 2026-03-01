@@ -12,26 +12,32 @@
         <div class="card-body">
             <form class="period-form" method="get" th:action="@{/admin/pnl}">
                 <div class="period-buttons">
-                    <button type="submit" name="period" value="today"
+                    <button type="submit" name="period" value="today" onclick="clearDates()"
                             th:class="${period == 'today'} ? 'btn btn-primary' : 'btn btn-outline'">Сьогодні</button>
-                    <button type="submit" name="period" value="week"
+                    <button type="submit" name="period" value="week" onclick="clearDates()"
                             th:class="${period == 'week'} ? 'btn btn-primary' : 'btn btn-outline'">Тиждень</button>
-                    <button type="submit" name="period" value="month"
+                    <button type="submit" name="period" value="month" onclick="clearDates()"
                             th:class="${period == 'month'} ? 'btn btn-primary' : 'btn btn-outline'">Цей місяць</button>
-                    <button type="submit" name="period" value="last_month"
+                    <button type="submit" name="period" value="last_month" onclick="clearDates()"
                             th:class="${period == 'last_month'} ? 'btn btn-primary' : 'btn btn-outline'">Минулий місяць</button>
-                    <button type="submit" name="period" value="quarter"
+                    <button type="submit" name="period" value="quarter" onclick="clearDates()"
                             th:class="${period == 'quarter'} ? 'btn btn-primary' : 'btn btn-outline'">Квартал</button>
-                    <button type="submit" name="period" value="year"
+                    <button type="submit" name="period" value="year" onclick="clearDates()"
                             th:class="${period == 'year'} ? 'btn btn-primary' : 'btn btn-outline'">Рік</button>
                 </div>
                 <div class="date-range">
-                    <input type="date" name="dateFrom" th:value="${dateFrom}" class="form-control">
+                    <input type="date" name="dateFrom" id="dateFrom" th:value="${dateFrom}" class="form-control">
                     <span>—</span>
-                    <input type="date" name="dateTo" th:value="${dateTo}" class="form-control">
+                    <input type="date" name="dateTo" id="dateTo" th:value="${dateTo}" class="form-control">
                     <button type="submit" class="btn btn-primary">Показати</button>
                 </div>
             </form>
+            <script>
+                function clearDates() {
+                    document.getElementById('dateFrom').value = '';
+                    document.getElementById('dateTo').value = '';
+                }
+            </script>
         </div>
     </div>
 
