@@ -113,7 +113,7 @@ public class PosterApiService {
             formData.append("client_name=").append(java.net.URLEncoder.encode(clientName, java.nio.charset.StandardCharsets.UTF_8));
             formData.append("&client_phone=").append(java.net.URLEncoder.encode(normalizedPhone, java.nio.charset.StandardCharsets.UTF_8));
             if (clientGroupId != null) {
-                formData.append("&client_groups_id=").append(clientGroupId);
+                formData.append("&client_groups_id_client=").append(clientGroupId);
             }
 
             String response = posterRestClient.post()
