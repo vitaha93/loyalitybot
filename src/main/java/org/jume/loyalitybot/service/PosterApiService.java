@@ -8,6 +8,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.jume.loyalitybot.config.CacheConfig;
 import org.jume.loyalitybot.config.PosterApiConfig;
 import org.jume.loyalitybot.dto.PosterClientDto;
+import org.jume.loyalitybot.dto.admin.FinanceTransactionDto;
 import org.jume.loyalitybot.dto.admin.ProductDto;
 import org.jume.loyalitybot.dto.admin.TransactionDto;
 import org.springframework.cache.annotation.CacheEvict;
@@ -434,6 +435,100 @@ public class PosterApiService {
                     }
                 })
                 .toList();
+    }
+
+    /**
+     * Get finance transactions for P&L report
+     */
+    public List<FinanceTransactionDto> getFinanceTransactions(LocalDate dateFrom, LocalDate dateTo) {
+        log.debug("Fetching finance transactions from {} to {}", dateFrom, dateTo);
+        try {
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMdd");
+            String response = posterRestClient.get()
+                    .uri(uriBuilder -> uriBuilder
+                            .path("/finance.getTransactions")
+                            .queryParam("token", config.getToken())
+                            .queryParam("dateFrom", dateFrom.format(formatter))
+                            .queryParam("dateTo", dateTo.format(formatter))
+                            .build())
+                    .retrieve()
+                    .body(String.class);
+
+            JsonNode root = objectMapper.readTree(response);
+            JsonNode responseNode = root.path("response");
+
+            if (responseNode.isArray()) {
+                List<FinanceTransactionDto> transactions = new ArrayList<>();
+                for (JsonNode txNode : responseNode) {
+                    transactions.add(objectMapper.treeToValue(txNode, FinanceTransactionDto.class));
+                }
+                log.info("Fetched {} finance transactions from {} to {}", transactions.size(), dateFrom, dateTo);
+                return transactions;
+            }
+
+            return Collections.emptyList();
+        } catch (Exception e) {
+            log.error("Error fetching finance transactions from Poster", e);
+            return Collections.emptyList();
+        }
+    }
+
+    /**
+     * Get sales analytics summary
+     */
+    public Optional<SalesAnalytics> getSalesAnalytics(LocalDate dateFrom, LocalDate dateTo) {
+        log.debug("Fetching sales analytics from {} to {}", dateFrom, dateTo);
+        try {
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMdd");
+            String response = posterRestClient.get()
+                    .uri(uriBuilder -> uriBuilder
+                            .path("/dash.getAnalytics")
+                            .queryParam("token", config.getToken())
+                            .queryParam("dateFrom", dateFrom.format(formatter))
+                            .queryParam("dateTo", dateTo.format(formatter))
+                            .queryParam("type", "sales")
+                            .build())
+                    .retrieve()
+                    .body(String.class);
+
+            JsonNode root = objectMapper.readTree(response);
+            JsonNode responseNode = root.path("response");
+            JsonNode counters = responseNode.path("counters");
+
+            if (!counters.isMissingNode()) {
+                SalesAnalytics analytics = new SalesAnalytics();
+                analytics.setRevenue(new java.math.BigDecimal(counters.path("revenue").asText("0")));
+                analytics.setProfit(new java.math.BigDecimal(counters.path("profit").asText("0")));
+                analytics.setTransactions(counters.path("transactions").asInt(0));
+                analytics.setAverageReceipt(new java.math.BigDecimal(String.valueOf(counters.path("average_receipt").asDouble(0))));
+
+                // Parse daily data
+                JsonNode dataNode = responseNode.path("data");
+                if (dataNode.isArray()) {
+                    List<java.math.BigDecimal> dailyRevenue = new ArrayList<>();
+                    for (JsonNode day : dataNode) {
+                        dailyRevenue.add(new java.math.BigDecimal(day.asText("0")));
+                    }
+                    analytics.setDailyRevenue(dailyRevenue);
+                }
+
+                return Optional.of(analytics);
+            }
+
+            return Optional.empty();
+        } catch (Exception e) {
+            log.error("Error fetching sales analytics from Poster", e);
+            return Optional.empty();
+        }
+    }
+
+    @lombok.Data
+    public static class SalesAnalytics {
+        private java.math.BigDecimal revenue;
+        private java.math.BigDecimal profit;
+        private int transactions;
+        private java.math.BigDecimal averageReceipt;
+        private List<java.math.BigDecimal> dailyRevenue;
     }
 
     private String normalizePhone(String phone) {

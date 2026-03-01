@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{admin/layout/base :: layout(~{::content}, 'P&L Звіт')}">
+<body>
+<div th:fragment="content">
+    <div class="page-header">
+        <h1>P&L Звіт (Прибутки та Збитки)</h1>
+    </div>
+
+    <!-- Period Selector -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form class="period-form" method="get" th:action="@{/admin/pnl}">
+                <div class="period-buttons">
+                    <button type="submit" name="period" value="today"
+                            th:class="${period == 'today'} ? 'btn btn-primary' : 'btn btn-outline'">Сьогодні</button>
+                    <button type="submit" name="period" value="week"
+                            th:class="${period == 'week'} ? 'btn btn-primary' : 'btn btn-outline'">Тиждень</button>
+                    <button type="submit" name="period" value="month"
+                            th:class="${period == 'month'} ? 'btn btn-primary' : 'btn btn-outline'">Цей місяць</button>
+                    <button type="submit" name="period" value="last_month"
+                            th:class="${period == 'last_month'} ? 'btn btn-primary' : 'btn btn-outline'">Минулий місяць</button>
+                    <button type="submit" name="period" value="quarter"
+                            th:class="${period == 'quarter'} ? 'btn btn-primary' : 'btn btn-outline'">Квартал</button>
+                    <button type="submit" name="period" value="year"
+                            th:class="${period == 'year'} ? 'btn btn-primary' : 'btn btn-outline'">Рік</button>
+                </div>
+                <div class="date-range">
+                    <input type="date" name="dateFrom" th:value="${dateFrom}" class="form-control">
+                    <span>—</span>
+                    <input type="date" name="dateTo" th:value="${dateTo}" class="form-control">
+                    <button type="submit" class="btn btn-primary">Показати</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="pnl-summary">
+        <div class="pnl-card revenue">
+            <div class="pnl-card-title">Виручка</div>
+            <div class="pnl-card-value" th:text="${#numbers.formatDecimal(report.totalRevenue, 1, 2)} + ' грн'">0 грн</div>
+        </div>
+        <div class="pnl-card cogs">
+            <div class="pnl-card-title">Собівартість</div>
+            <div class="pnl-card-value" th:text="'-' + ${#numbers.formatDecimal(report.totalCogs, 1, 2)} + ' грн'">0 грн</div>
+        </div>
+        <div class="pnl-card gross">
+            <div class="pnl-card-title">Валовий прибуток</div>
+            <div class="pnl-card-value" th:text="${#numbers.formatDecimal(report.grossProfit, 1, 2)} + ' грн'">0 грн</div>
+            <div class="pnl-card-percent" th:text="'Маржа: ' + ${#numbers.formatDecimal(report.grossMarginPercent, 1, 1)} + '%'">0%</div>
+        </div>
+        <div class="pnl-card expenses">
+            <div class="pnl-card-title">Операційні витрати</div>
+            <div class="pnl-card-value" th:text="'-' + ${#numbers.formatDecimal(report.totalOperatingExpenses, 1, 2)} + ' грн'">0 грн</div>
+        </div>
+        <div class="pnl-card net" th:classappend="${report.netProfit.compareTo(T(java.math.BigDecimal).ZERO) >= 0} ? 'positive' : 'negative'">
+            <div class="pnl-card-title">Чистий прибуток</div>
+            <div class="pnl-card-value" th:text="${#numbers.formatDecimal(report.netProfit, 1, 2)} + ' грн'">0 грн</div>
+            <div class="pnl-card-percent" th:text="'Маржа: ' + ${#numbers.formatDecimal(report.netMarginPercent, 1, 1)} + '%'">0%</div>
+        </div>
+    </div>
+
+    <!-- Charts -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h2>Динаміка</h2>
+        </div>
+        <div class="card-body">
+            <canvas id="pnlChart" height="100"></canvas>
+        </div>
+    </div>
+
+    <div class="pnl-grid">
+        <!-- Revenue by Account -->
+        <div class="card">
+            <div class="card-header">
+                <h2>Виручка по точках</h2>
+            </div>
+            <div class="card-body">
+                <table class="table" th:if="${report.revenueByAccount != null and !report.revenueByAccount.isEmpty()}">
+                    <thead>
+                        <tr>
+                            <th>Точка</th>
+                            <th class="text-right">Сума</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="entry : ${report.revenueByAccount}">
+                            <td th:text="${entry.key}">Account</td>
+                            <td class="text-right" th:text="${#numbers.formatDecimal(entry.value, 1, 2)} + ' грн'">0 грн</td>
+                        </tr>
+                    </tbody>
+                    <tfoot>
+                        <tr class="total-row">
+                            <td><strong>Всього</strong></td>
+                            <td class="text-right"><strong th:text="${#numbers.formatDecimal(report.totalRevenue, 1, 2)} + ' грн'">0 грн</strong></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+
+        <!-- COGS by Supplier -->
+        <div class="card">
+            <div class="card-header">
+                <h2>Собівартість (закупки)</h2>
+            </div>
+            <div class="card-body">
+                <table class="table" th:if="${report.cogsBySupplier != null and !report.cogsBySupplier.isEmpty()}">
+                    <thead>
+                        <tr>
+                            <th>Постачальник</th>
+                            <th class="text-right">Сума</th>
+                            <th class="text-right">К-ть</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="item : ${report.cogsBySupplier}">
+                            <td th:text="${item.categoryName}">Supplier</td>
+                            <td class="text-right expense" th:text="'-' + ${#numbers.formatDecimal(item.amount, 1, 2)} + ' грн'">0 грн</td>
+                            <td class="text-right" th:text="${item.transactionCount}">0</td>
+                        </tr>
+                    </tbody>
+                    <tfoot>
+                        <tr class="total-row">
+                            <td><strong>Всього</strong></td>
+                            <td class="text-right expense"><strong th:text="'-' + ${#numbers.formatDecimal(report.totalCogs, 1, 2)} + ' грн'">0 грн</strong></td>
+                            <td></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+
+        <!-- Operating Expenses -->
+        <div class="card">
+            <div class="card-header">
+                <h2>Операційні витрати</h2>
+            </div>
+            <div class="card-body">
+                <table class="table" th:if="${report.expensesByCategory != null and !report.expensesByCategory.isEmpty()}">
+                    <thead>
+                        <tr>
+                            <th>Категорія</th>
+                            <th class="text-right">Сума</th>
+                            <th class="text-right">%</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="item : ${report.expensesByCategory}">
+                            <td th:text="${item.categoryName}">Category</td>
+                            <td class="text-right expense" th:text="'-' + ${#numbers.formatDecimal(item.amount, 1, 2)} + ' грн'">0 грн</td>
+                            <td class="text-right" th:text="${#numbers.formatDecimal(item.percentOfTotal, 1, 1)} + '%'">0%</td>
+                        </tr>
+                    </tbody>
+                    <tfoot>
+                        <tr class="total-row">
+                            <td><strong>Всього</strong></td>
+                            <td class="text-right expense"><strong th:text="'-' + ${#numbers.formatDecimal(report.totalOperatingExpenses, 1, 2)} + ' грн'">0 грн</strong></td>
+                            <td class="text-right">100%</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+
+        <!-- Expenses Pie Chart -->
+        <div class="card">
+            <div class="card-header">
+                <h2>Структура витрат</h2>
+            </div>
+            <div class="card-body">
+                <canvas id="expensesChart" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- P&L Statement -->
+    <div class="card mt-4">
+        <div class="card-header">
+            <h2>Звіт P&L</h2>
+        </div>
+        <div class="card-body">
+            <table class="table pnl-statement">
+                <tbody>
+                    <tr class="section-header">
+                        <td colspan="2"><strong>ДОХОДИ</strong></td>
+                    </tr>
+                    <tr>
+                        <td class="indent">Виручка від продажів</td>
+                        <td class="text-right revenue-text" th:text="${#numbers.formatDecimal(report.totalRevenue, 1, 2)} + ' грн'">0 грн</td>
+                    </tr>
+                    <tr class="subtotal">
+                        <td><strong>Всього доходів</strong></td>
+                        <td class="text-right"><strong th:text="${#numbers.formatDecimal(report.totalRevenue, 1, 2)} + ' грн'">0 грн</strong></td>
+                    </tr>
+
+                    <tr class="section-header">
+                        <td colspan="2"><strong>СОБІВАРТІСТЬ</strong></td>
+                    </tr>
+                    <tr>
+                        <td class="indent">Закупки товарів/інгредієнтів</td>
+                        <td class="text-right expense" th:text="'-' + ${#numbers.formatDecimal(report.totalCogs, 1, 2)} + ' грн'">0 грн</td>
+                    </tr>
+                    <tr class="subtotal">
+                        <td><strong>Валовий прибуток</strong></td>
+                        <td class="text-right" th:classappend="${report.grossProfit.compareTo(T(java.math.BigDecimal).ZERO) >= 0} ? 'revenue-text' : 'expense'">
+                            <strong th:text="${#numbers.formatDecimal(report.grossProfit, 1, 2)} + ' грн'">0 грн</strong>
+                        </td>
+                    </tr>
+
+                    <tr class="section-header">
+                        <td colspan="2"><strong>ОПЕРАЦІЙНІ ВИТРАТИ</strong></td>
+                    </tr>
+                    <tr th:each="item : ${report.expensesByCategory}">
+                        <td class="indent" th:text="${item.categoryName}">Category</td>
+                        <td class="text-right expense" th:text="'-' + ${#numbers.formatDecimal(item.amount, 1, 2)} + ' грн'">0 грн</td>
+                    </tr>
+                    <tr class="subtotal">
+                        <td><strong>Всього операційних витрат</strong></td>
+                        <td class="text-right expense"><strong th:text="'-' + ${#numbers.formatDecimal(report.totalOperatingExpenses, 1, 2)} + ' грн'">0 грн</strong></td>
+                    </tr>
+
+                    <tr class="total-row net-profit">
+                        <td><strong>ЧИСТИЙ ПРИБУТОК</strong></td>
+                        <td class="text-right" th:classappend="${report.netProfit.compareTo(T(java.math.BigDecimal).ZERO) >= 0} ? 'revenue-text' : 'expense'">
+                            <strong th:text="${#numbers.formatDecimal(report.netProfit, 1, 2)} + ' грн'">0 грн</strong>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script th:inline="javascript">
+        const chartLabels = /*[[${chartLabels}]]*/ [];
+        const chartRevenue = /*[[${chartRevenue}]]*/ [];
+        const chartExpenses = /*[[${chartExpenses}]]*/ [];
+        const chartProfit = /*[[${chartProfit}]]*/ [];
+
+        // Format labels to show only day
+        const formattedLabels = chartLabels.map(date => {
+            const d = new Date(date);
+            return d.getDate() + '.' + (d.getMonth() + 1);
+        });
+
+        // Line chart
+        new Chart(document.getElementById('pnlChart'), {
+            type: 'line',
+            data: {
+                labels: formattedLabels,
+                datasets: [
+                    {
+                        label: 'Виручка',
+                        data: chartRevenue,
+                        borderColor: '#22c55e',
+                        backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                        fill: true,
+                        tension: 0.3
+                    },
+                    {
+                        label: 'Витрати',
+                        data: chartExpenses,
+                        borderColor: '#ef4444',
+                        backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                        fill: true,
+                        tension: 0.3
+                    },
+                    {
+                        label: 'Прибуток',
+                        data: chartProfit,
+                        borderColor: '#3b82f6',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        fill: true,
+                        tension: 0.3
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) {
+                                return value.toLocaleString() + ' грн';
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        // Expenses pie chart
+        const expenseCategories = /*[[${report.expensesByCategory}]]*/ [];
+        const expenseLabels = expenseCategories.map(c => c.categoryName);
+        const expenseData = expenseCategories.map(c => c.amount);
+        const expenseColors = [
+            '#ef4444', '#f97316', '#eab308', '#22c55e', '#14b8a6',
+            '#3b82f6', '#8b5cf6', '#ec4899', '#6b7280', '#0ea5e9'
+        ];
+
+        new Chart(document.getElementById('expensesChart'), {
+            type: 'doughnut',
+            data: {
+                labels: expenseLabels,
+                datasets: [{
+                    data: expenseData,
+                    backgroundColor: expenseColors.slice(0, expenseData.length)
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'right',
+                    }
+                }
+            }
+        });
+    </script>
+
+    <style>
+        .pnl-summary {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .pnl-card {
+            background: white;
+            border-radius: 8px;
+            padding: 1.25rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .pnl-card-title {
+            font-size: 0.875rem;
+            color: #6b7280;
+            margin-bottom: 0.5rem;
+        }
+
+        .pnl-card-value {
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+
+        .pnl-card-percent {
+            font-size: 0.75rem;
+            color: #6b7280;
+            margin-top: 0.25rem;
+        }
+
+        .pnl-card.revenue .pnl-card-value { color: #22c55e; }
+        .pnl-card.cogs .pnl-card-value { color: #f97316; }
+        .pnl-card.gross .pnl-card-value { color: #3b82f6; }
+        .pnl-card.expenses .pnl-card-value { color: #ef4444; }
+        .pnl-card.net.positive .pnl-card-value { color: #22c55e; }
+        .pnl-card.net.negative .pnl-card-value { color: #ef4444; }
+
+        .pnl-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1.5rem;
+        }
+
+        .period-form {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .period-buttons {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .date-range {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+        }
+
+        .date-range input {
+            width: 150px;
+        }
+
+        .text-right { text-align: right; }
+        .expense { color: #ef4444; }
+        .revenue-text { color: #22c55e; }
+
+        .pnl-statement .section-header {
+            background: #f3f4f6;
+        }
+
+        .pnl-statement .section-header td {
+            padding-top: 1rem;
+            padding-bottom: 0.5rem;
+        }
+
+        .pnl-statement .indent {
+            padding-left: 2rem;
+        }
+
+        .pnl-statement .subtotal {
+            border-top: 1px solid #e5e7eb;
+            background: #fafafa;
+        }
+
+        .pnl-statement .total-row.net-profit {
+            background: #f0f9ff;
+            font-size: 1.1rem;
+        }
+
+        .total-row {
+            border-top: 2px solid #e5e7eb;
+            font-weight: 600;
+        }
+
+        .mb-4 { margin-bottom: 1rem; }
+        .mt-4 { margin-top: 1rem; }
+
+        @media (max-width: 1200px) {
+            .pnl-summary {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .pnl-summary {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .pnl-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</div>
+</body>
+</html>
