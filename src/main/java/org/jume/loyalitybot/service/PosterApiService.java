@@ -104,20 +104,25 @@ public class PosterApiService {
 
     @CacheEvict(value = CacheConfig.POSTER_CLIENT_CACHE, allEntries = true)
     public Optional<Long> createClient(String firstName, String lastName, String phone, Long clientGroupId) {
-        log.info("Creating new client in Poster: {} {} {}, groupId: {}", firstName, lastName, phone, clientGroupId);
+        String clientName = (firstName + " " + lastName).trim();
+        String normalizedPhone = normalizePhone(phone);
+        log.info("Creating new client in Poster: name='{}', phone='{}', groupId: {}", clientName, normalizedPhone, clientGroupId);
         try {
+            // Build form data
+            StringBuilder formData = new StringBuilder();
+            formData.append("client_name=").append(java.net.URLEncoder.encode(clientName, java.nio.charset.StandardCharsets.UTF_8));
+            formData.append("&client_phone=").append(java.net.URLEncoder.encode(normalizedPhone, java.nio.charset.StandardCharsets.UTF_8));
+            if (clientGroupId != null) {
+                formData.append("&client_groups_id=").append(clientGroupId);
+            }
+
             String response = posterRestClient.post()
-                    .uri(uriBuilder -> {
-                        var builder = uriBuilder
-                                .path("/clients.createClient")
-                                .queryParam("token", config.getToken())
-                                .queryParam("client_name", (firstName + " " + lastName).trim())
-                                .queryParam("client_phone", normalizePhone(phone));
-                        if (clientGroupId != null) {
-                            builder.queryParam("client_groups_id", clientGroupId);
-                        }
-                        return builder.build();
-                    })
+                    .uri(uriBuilder -> uriBuilder
+                            .path("/clients.createClient")
+                            .queryParam("token", config.getToken())
+                            .build())
+                    .contentType(org.springframework.http.MediaType.APPLICATION_FORM_URLENCODED)
+                    .body(formData.toString())
                     .retrieve()
                     .body(String.class);
 
