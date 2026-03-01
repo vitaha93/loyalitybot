@@ -8,6 +8,7 @@ import org.jume.loyalitybot.model.Customer;
 import org.jume.loyalitybot.service.AdminStatsService;
 import org.jume.loyalitybot.service.CustomerService;
 import org.jume.loyalitybot.service.PosterApiService;
+import org.jume.loyalitybot.service.TelegramBotService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -15,8 +16,10 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import jakarta.servlet.http.HttpSession;
 import java.util.Optional;
@@ -30,6 +33,7 @@ public class AdminCustomerController {
     private final CustomerService customerService;
     private final PosterApiService posterApiService;
     private final AdminStatsService adminStatsService;
+    private final TelegramBotService telegramBotService;
 
     @GetMapping
     public String listCustomers(
@@ -123,5 +127,29 @@ public class AdminCustomerController {
         }
 
         return "admin/customers/detail";
+    }
+
+    @PostMapping("/{id}/send-message")
+    public String sendMessage(
+            @PathVariable Long id,
+            @RequestParam String message,
+            RedirectAttributes redirectAttributes) {
+
+        Optional<Customer> customerOpt = customerService.getCustomerById(id);
+        if (customerOpt.isEmpty()) {
+            return "redirect:/admin/customers?error=notfound";
+        }
+
+        Customer customer = customerOpt.get();
+        try {
+            telegramBotService.sendMessage(customer.getTelegramId(), message);
+            log.info("Admin sent message to customer {} (telegramId={})", id, customer.getTelegramId());
+            redirectAttributes.addFlashAttribute("messageSent", true);
+        } catch (Exception e) {
+            log.error("Failed to send message to customer {}: {}", id, e.getMessage());
+            redirectAttributes.addFlashAttribute("messageError", e.getMessage());
+        }
+
+        return "redirect:/admin/customers/" + id;
     }
 }

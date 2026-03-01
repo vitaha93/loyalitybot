@@ -69,6 +69,29 @@
             </div>
         </div>
 
+        <!-- Send Message (only if linked to Telegram) -->
+        <div class="card" th:if="${linkedCustomer != null}">
+            <div class="card-header">
+                <h2>Надіслати повідомлення</h2>
+            </div>
+            <div class="card-body">
+                <form th:action="@{/admin/poster-clients/{id}/send-message(id=${posterClient.clientId})}" method="post" class="message-form">
+                    <div class="form-group">
+                        <label for="message">Текст повідомлення</label>
+                        <textarea id="message" name="message" rows="4" required class="form-control"
+                                  placeholder="Введіть текст повідомлення..."></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Надіслати</button>
+                </form>
+                <div th:if="${messageSent}" class="alert alert-success mt-2">
+                    Повідомлення успішно надіслано!
+                </div>
+                <div th:if="${messageError}" class="alert alert-danger mt-2">
+                    Помилка надсилання: <span th:text="${messageError}">error</span>
+                </div>
+            </div>
+        </div>
+
         <!-- Stats -->
         <div class="card">
             <div class="card-header">

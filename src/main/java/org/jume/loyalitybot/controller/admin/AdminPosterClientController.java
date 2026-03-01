@@ -8,12 +8,15 @@ import org.jume.loyalitybot.model.Customer;
 import org.jume.loyalitybot.service.AdminStatsService;
 import org.jume.loyalitybot.service.CustomerService;
 import org.jume.loyalitybot.service.PosterApiService;
+import org.jume.loyalitybot.service.TelegramBotService;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import jakarta.servlet.http.HttpSession;
 import java.util.Comparator;
@@ -30,6 +33,7 @@ public class AdminPosterClientController {
     private final PosterApiService posterApiService;
     private final CustomerService customerService;
     private final AdminStatsService adminStatsService;
+    private final TelegramBotService telegramBotService;
 
     @GetMapping
     public String listPosterClients(
@@ -108,5 +112,30 @@ public class AdminPosterClientController {
         model.addAttribute("favoriteProducts", adminStatsService.getClientFavoriteProducts(id, 10));
 
         return "admin/poster-clients/detail";
+    }
+
+    @PostMapping("/{id}/send-message")
+    public String sendMessage(
+            @PathVariable Long id,
+            @RequestParam String message,
+            RedirectAttributes redirectAttributes) {
+
+        Optional<Customer> linkedCustomer = customerService.findByPosterClientId(id);
+        if (linkedCustomer.isEmpty()) {
+            redirectAttributes.addFlashAttribute("messageError", "Клієнт не прив'язаний до Telegram");
+            return "redirect:/admin/poster-clients/" + id;
+        }
+
+        Customer customer = linkedCustomer.get();
+        try {
+            telegramBotService.sendMessage(customer.getTelegramId(), message);
+            log.info("Admin sent message to poster client {} (telegramId={})", id, customer.getTelegramId());
+            redirectAttributes.addFlashAttribute("messageSent", true);
+        } catch (Exception e) {
+            log.error("Failed to send message to poster client {}: {}", id, e.getMessage());
+            redirectAttributes.addFlashAttribute("messageError", e.getMessage());
+        }
+
+        return "redirect:/admin/poster-clients/" + id;
     }
 }
