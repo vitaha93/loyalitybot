@@ -98,15 +98,25 @@ public class PosterApiService {
 
     @CacheEvict(value = CacheConfig.POSTER_CLIENT_CACHE, allEntries = true)
     public Optional<Long> createClient(String firstName, String lastName, String phone) {
-        log.info("Creating new client in Poster: {} {} {}", firstName, lastName, phone);
+        return createClient(firstName, lastName, phone, config.getDefaultClientGroupId());
+    }
+
+    @CacheEvict(value = CacheConfig.POSTER_CLIENT_CACHE, allEntries = true)
+    public Optional<Long> createClient(String firstName, String lastName, String phone, Long clientGroupId) {
+        log.info("Creating new client in Poster: {} {} {}, groupId: {}", firstName, lastName, phone, clientGroupId);
         try {
             String response = posterRestClient.post()
-                    .uri(uriBuilder -> uriBuilder
-                            .path("/clients.createClient")
-                            .queryParam("token", config.getToken())
-                            .queryParam("client_name", (firstName + " " + lastName).trim())
-                            .queryParam("client_phone", normalizePhone(phone))
-                            .build())
+                    .uri(uriBuilder -> {
+                        var builder = uriBuilder
+                                .path("/clients.createClient")
+                                .queryParam("token", config.getToken())
+                                .queryParam("client_name", (firstName + " " + lastName).trim())
+                                .queryParam("client_phone", normalizePhone(phone));
+                        if (clientGroupId != null) {
+                            builder.queryParam("client_groups_id", clientGroupId);
+                        }
+                        return builder.build();
+                    })
                     .retrieve()
                     .body(String.class);
 
@@ -119,11 +129,40 @@ public class PosterApiService {
                 return Optional.of(clientId);
             }
 
-            log.warn("Failed to create client in Poster - unexpected response");
+            log.warn("Failed to create client in Poster - unexpected response: {}", response);
             return Optional.empty();
         } catch (Exception e) {
             log.error("Error creating client in Poster", e);
             return Optional.empty();
+        }
+    }
+
+    @CacheEvict(value = CacheConfig.POSTER_CLIENT_CACHE, key = "#clientId")
+    public boolean updateClientBirthday(Long clientId, String birthday) {
+        log.info("Updating birthday for client {}: {}", clientId, birthday);
+        try {
+            String response = posterRestClient.post()
+                    .uri(uriBuilder -> uriBuilder
+                            .path("/clients.updateClient")
+                            .queryParam("token", config.getToken())
+                            .queryParam("client_id", clientId)
+                            .queryParam("birthday", birthday)
+                            .build())
+                    .retrieve()
+                    .body(String.class);
+
+            JsonNode root = objectMapper.readTree(response);
+            boolean success = root.has("response") && !root.path("response").isNull();
+
+            if (success) {
+                log.info("Successfully updated birthday for client {}", clientId);
+            } else {
+                log.warn("Failed to update birthday for client {}: {}", clientId, response);
+            }
+            return success;
+        } catch (Exception e) {
+            log.error("Error updating birthday for client {}", clientId, e);
+            return false;
         }
     }
 

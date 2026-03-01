@@ -52,6 +52,7 @@ poster:
     base-url: https://joinposter.com/api
     token: ${POSTER_API_TOKEN:}
     account: ${POSTER_API_ACCOUNT:}
+    default-client-group-id: ${POSTER_DEFAULT_CLIENT_GROUP_ID:}
   webhook:
     secret: ${POSTER_WEBHOOK_SECRET:}
 

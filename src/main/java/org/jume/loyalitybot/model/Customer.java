@@ -2,6 +2,7 @@ package org.jume.loyalitybot.model;
 
 import jakarta.persistence.*;
 import lombok.*;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
@@ -35,6 +36,13 @@ public class Customer {
     @Column(name = "poster_client_id", unique = true)
     private Long posterClientId;
 
+    @Column(name = "birthday")
+    private LocalDate birthday;
+
+    @Column(name = "is_new_client")
+    @Builder.Default
+    private Boolean isNewClient = false;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
     @Builder.Default
@@ -55,6 +63,7 @@ public class Customer {
 
     public enum CustomerStatus {
         PENDING_PHONE,
+        PENDING_BIRTHDAY,
         ACTIVE,
         BLOCKED
     }

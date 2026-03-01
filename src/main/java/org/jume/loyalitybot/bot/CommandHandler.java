@@ -58,10 +58,16 @@ public class CommandHandler {
     private void handleButtonText(TelegramUser telegramUser, Long chatId, String text) {
         Customer customer = customerService.getOrCreateCustomer(telegramUser);
 
-        if (customer.getStatus() != CustomerStatus.ACTIVE) {
+        if (customer.getStatus() == CustomerStatus.PENDING_PHONE) {
             telegramBotService.sendMessage(chatId,
                     "Будь ласка, завершіть реєстрацію, поділившись номером телефону.");
             telegramBotService.requestContact(chatId);
+            return;
+        }
+
+        if (customer.getStatus() == CustomerStatus.PENDING_BIRTHDAY) {
+            // User is entering their birthday
+            customerService.processBirthdayRegistration(telegramUser.getId(), text);
             return;
         }
 
@@ -89,10 +95,16 @@ public class CommandHandler {
             }
         }
 
-        if (customer.getStatus() != CustomerStatus.ACTIVE) {
+        if (customer.getStatus() == CustomerStatus.PENDING_PHONE) {
             telegramBotService.sendMessage(chatId,
                     "Будь ласка, завершіть реєстрацію, поділившись номером телефону.");
             telegramBotService.requestContact(chatId);
+            return;
+        }
+
+        if (customer.getStatus() == CustomerStatus.PENDING_BIRTHDAY) {
+            telegramBotService.sendMessage(chatId,
+                    "Будь ласка, введіть дату вашого народження у форматі ДД.ММ.РРРР (наприклад, 25.12.1990):");
             return;
         }
 
@@ -108,6 +120,9 @@ public class CommandHandler {
                     customer.getDisplayName()
             );
             telegramBotService.sendMessageWithMainMenu(chatId, message);
+        } else if (customer.getStatus() == CustomerStatus.PENDING_BIRTHDAY) {
+            String message = "Для завершення реєстрації, будь ласка, введіть дату вашого народження у форматі ДД.ММ.РРРР (наприклад, 25.12.1990):";
+            telegramBotService.sendMessage(chatId, message);
         } else {
             String message = "Вітаю в програмі лояльності нашої кав'ярні!\n\n" +
                     "Для реєстрації, будь ласка, поділіться своїм номером телефону.";

@@ -16,6 +16,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.Optional;
 
@@ -60,23 +63,106 @@ public class CustomerService {
         Optional<PosterClientDto> existingClient = posterApiService.findClientByPhone(phone);
 
         if (existingClient.isPresent()) {
+            // Existing client in Poster - just link, no welcome bonus
             linkToPosterClient(customer, existingClient.get());
+            customer.setIsNewClient(false);
+            customer.setStatus(CustomerStatus.ACTIVE);
+            customer = customerRepository.save(customer);
+
             log.info("Linked customer {} to existing Poster client {}", customer.getTelegramId(), existingClient.get().getClientId());
+
+            // Send welcome message for existing client (no bonus mention)
+            telegramBotService.sendMessageWithMainMenu(telegramId,
+                    String.format("Вітаємо, %s!\n\n" +
+                            "Ви успішно приєднались до програми лояльності.\n" +
+                            "Тепер ви можете отримувати сповіщення про бонуси.",
+                            customer.getDisplayName()));
         } else {
+            // New client - create in Poster, ask for birthday
             createPosterClientAndLink(customer);
+            customer.setIsNewClient(true);
+            customer.setStatus(CustomerStatus.PENDING_BIRTHDAY);
+            customer = customerRepository.save(customer);
+
+            log.info("Created new Poster client for customer {}, asking for birthday", customer.getTelegramId());
+
+            // Ask for birthday
+            telegramBotService.sendMessage(telegramId,
+                    String.format("Вітаємо, %s!\n\n" +
+                            "Ви зареєстровані в програмі лояльності.\n" +
+                            "Poster автоматично нарахував вам вітальний бонус 5 грн!\n\n" +
+                            "Будь ласка, введіть дату вашого народження у форматі ДД.ММ.РРРР (наприклад, 25.12.1990):",
+                            customer.getDisplayName()));
         }
 
+        return customer;
+    }
+
+    @Transactional
+    public Customer processBirthdayRegistration(Long telegramId, String birthdayInput) {
+        Customer customer = customerRepository.findByTelegramId(telegramId)
+                .orElseThrow(() -> new IllegalStateException("Customer not found for telegramId: " + telegramId));
+
+        if (customer.getStatus() != CustomerStatus.PENDING_BIRTHDAY) {
+            log.warn("Customer {} is not in PENDING_BIRTHDAY status", telegramId);
+            return customer;
+        }
+
+        LocalDate birthday = parseBirthday(birthdayInput);
+        if (birthday == null) {
+            telegramBotService.sendMessage(telegramId,
+                    "Невірний формат дати. Будь ласка, введіть дату у форматі ДД.ММ.РРРР (наприклад, 25.12.1990):");
+            return customer;
+        }
+
+        // Validate birthday is not in the future and person is at least 5 years old
+        LocalDate today = LocalDate.now();
+        if (birthday.isAfter(today) || birthday.isAfter(today.minusYears(5))) {
+            telegramBotService.sendMessage(telegramId,
+                    "Будь ласка, введіть коректну дату народження:");
+            return customer;
+        }
+
+        customer.setBirthday(birthday);
         customer.setStatus(CustomerStatus.ACTIVE);
         customer = customerRepository.save(customer);
 
-        BigDecimal welcomeBonus = loyaltyConfig.getWelcomeBonus();
-        if (welcomeBonus.compareTo(BigDecimal.ZERO) > 0 && customer.getPosterClientId() != null) {
-            posterApiService.addBonus(customer.getPosterClientId(), welcomeBonus, "Вітальний бонус");
+        // Update birthday in Poster
+        if (customer.getPosterClientId() != null) {
+            String posterBirthdayFormat = birthday.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+            posterApiService.updateClientBirthday(customer.getPosterClientId(), posterBirthdayFormat);
         }
 
-        telegramBotService.sendWelcomeMessage(telegramId, customer.getDisplayName(), welcomeBonus);
+        log.info("Completed birthday registration for customer {}: {}", telegramId, birthday);
+
+        telegramBotService.sendMessageWithMainMenu(telegramId,
+                "Дякуємо! Реєстрацію завершено.\n\n" +
+                "Використовуйте кнопки меню нижче, щоб перевірити баланс або отримати картку.");
 
         return customer;
+    }
+
+    private LocalDate parseBirthday(String input) {
+        if (input == null || input.isBlank()) {
+            return null;
+        }
+
+        String trimmed = input.trim();
+        List<DateTimeFormatter> formatters = List.of(
+                DateTimeFormatter.ofPattern("dd.MM.yyyy"),
+                DateTimeFormatter.ofPattern("dd/MM/yyyy"),
+                DateTimeFormatter.ofPattern("dd-MM-yyyy"),
+                DateTimeFormatter.ofPattern("yyyy-MM-dd")
+        );
+
+        for (DateTimeFormatter formatter : formatters) {
+            try {
+                return LocalDate.parse(trimmed, formatter);
+            } catch (DateTimeParseException ignored) {
+            }
+        }
+
+        return null;
     }
 
     private void linkToPosterClient(Customer customer, PosterClientDto posterClient) {

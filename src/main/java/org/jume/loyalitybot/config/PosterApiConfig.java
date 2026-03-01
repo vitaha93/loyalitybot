@@ -25,6 +25,8 @@ public class PosterApiConfig {
 
     private String account;
 
+    private Long defaultClientGroupId;
+
     @Bean
     public RestClient posterRestClient() {
         String url = account != null && !account.isBlank()
