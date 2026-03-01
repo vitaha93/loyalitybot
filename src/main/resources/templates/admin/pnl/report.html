@@ -61,6 +61,18 @@
         </div>
     </div>
 
+    <!-- Owner Withdrawal Summary -->
+    <div class="pnl-summary pnl-summary-2" th:if="${report.ownerWithdrawal.compareTo(T(java.math.BigDecimal).ZERO) > 0}">
+        <div class="pnl-card withdrawal">
+            <div class="pnl-card-title">Вивід з обороту (ваш дохід)</div>
+            <div class="pnl-card-value" th:text="${#numbers.formatDecimal(report.ownerWithdrawal, 1, 2)} + ' грн'">0 грн</div>
+        </div>
+        <div class="pnl-card retained" th:classappend="${report.retainedProfit.compareTo(T(java.math.BigDecimal).ZERO) >= 0} ? 'positive' : 'negative'">
+            <div class="pnl-card-title">Залишок в бізнесі</div>
+            <div class="pnl-card-value" th:text="${#numbers.formatDecimal(report.retainedProfit, 1, 2)} + ' грн'">0 грн</div>
+        </div>
+    </div>
+
     <!-- Charts -->
     <div class="card mb-4">
         <div class="card-header">
@@ -228,6 +240,20 @@
                             <strong th:text="${#numbers.formatDecimal(report.netProfit, 1, 2)} + ' грн'">0 грн</strong>
                         </td>
                     </tr>
+
+                    <tr class="section-header" th:if="${report.ownerWithdrawal.compareTo(T(java.math.BigDecimal).ZERO) > 0}">
+                        <td colspan="2"><strong>РОЗПОДІЛ ПРИБУТКУ</strong></td>
+                    </tr>
+                    <tr th:if="${report.ownerWithdrawal.compareTo(T(java.math.BigDecimal).ZERO) > 0}">
+                        <td class="indent">Вивід з обороту (ваш дохід)</td>
+                        <td class="text-right withdrawal-text" th:text="${#numbers.formatDecimal(report.ownerWithdrawal, 1, 2)} + ' грн'">0 грн</td>
+                    </tr>
+                    <tr class="total-row retained-profit" th:if="${report.ownerWithdrawal.compareTo(T(java.math.BigDecimal).ZERO) > 0}">
+                        <td><strong>ЗАЛИШОК В БІЗНЕСІ</strong></td>
+                        <td class="text-right" th:classappend="${report.retainedProfit.compareTo(T(java.math.BigDecimal).ZERO) >= 0} ? 'revenue-text' : 'expense'">
+                            <strong th:text="${#numbers.formatDecimal(report.retainedProfit, 1, 2)} + ' грн'">0 грн</strong>
+                        </td>
+                    </tr>
                 </tbody>
             </table>
         </div>
@@ -360,7 +386,16 @@
             margin-top: 0.25rem;
         }
 
+        .pnl-summary-2 {
+            grid-template-columns: repeat(2, 1fr);
+            max-width: 600px;
+        }
+
         .pnl-card.revenue .pnl-card-value { color: #22c55e; }
+        .pnl-card.withdrawal .pnl-card-value { color: #8b5cf6; }
+        .pnl-card.retained.positive .pnl-card-value { color: #22c55e; }
+        .pnl-card.retained.negative .pnl-card-value { color: #ef4444; }
+        .withdrawal-text { color: #8b5cf6; }
         .pnl-card.cogs .pnl-card-value { color: #f97316; }
         .pnl-card.gross .pnl-card-value { color: #3b82f6; }
         .pnl-card.expenses .pnl-card-value { color: #ef4444; }

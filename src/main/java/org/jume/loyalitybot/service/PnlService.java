@@ -26,6 +26,7 @@ public class PnlService {
     private static final Set<Long> COGS_CATEGORIES = Set.of(3L); // Постачання
     private static final Set<Long> TRANSFER_CATEGORIES = Set.of(1L); // Перекази (exclude from P&L)
     private static final Set<Long> ADJUSTMENT_CATEGORIES = Set.of(4L); // Актуалізація
+    private static final Set<Long> OWNER_WITHDRAWAL_CATEGORIES = Set.of(18L); // Вивід з обороту (profit for owner)
 
     public PnlReportDto generateReport(LocalDate dateFrom, LocalDate dateTo) {
         log.info("Generating P&L report from {} to {}", dateFrom, dateTo);
@@ -85,11 +86,12 @@ public class PnlService {
         // Gross profit
         BigDecimal grossProfit = totalRevenue.subtract(totalCogs);
 
-        // Operating expenses (all other expense categories except COGS and transfers)
+        // Operating expenses (all other expense categories except COGS, transfers, and owner withdrawals)
         List<FinanceTransactionDto> operatingExpenses = relevantTransactions.stream()
                 .filter(tx -> !REVENUE_CATEGORIES.contains(tx.getCategoryId()))
                 .filter(tx -> !COGS_CATEGORIES.contains(tx.getCategoryId()))
                 .filter(tx -> !ADJUSTMENT_CATEGORIES.contains(tx.getCategoryId()))
+                .filter(tx -> !OWNER_WITHDRAWAL_CATEGORIES.contains(tx.getCategoryId()))
                 .filter(FinanceTransactionDto::isExpense)
                 .toList();
 
@@ -127,8 +129,18 @@ public class PnlService {
                 })
                 .toList();
 
-        // Net profit
+        // Net profit (before owner withdrawal)
         BigDecimal netProfit = grossProfit.subtract(totalOperatingExpenses);
+
+        // Owner withdrawal (Вивід з обороту)
+        BigDecimal ownerWithdrawal = relevantTransactions.stream()
+                .filter(tx -> OWNER_WITHDRAWAL_CATEGORIES.contains(tx.getCategoryId()))
+                .filter(FinanceTransactionDto::isExpense)
+                .map(FinanceTransactionDto::getAbsoluteAmountInHryvnia)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        // Retained profit (what's left after owner takes their share)
+        BigDecimal retainedProfit = netProfit.subtract(ownerWithdrawal);
 
         // Daily data for charts
         List<DailyData> dailyData = calculateDailyData(relevantTransactions, dateFrom, dateTo);
@@ -163,6 +175,8 @@ public class PnlService {
                 .totalOperatingExpenses(totalOperatingExpenses)
                 .expensesByCategory(expensesByCategory)
                 .netProfit(netProfit)
+                .ownerWithdrawal(ownerWithdrawal)
+                .retainedProfit(retainedProfit)
                 .dailyData(dailyData)
                 .allCategories(allCategories)
                 .build();

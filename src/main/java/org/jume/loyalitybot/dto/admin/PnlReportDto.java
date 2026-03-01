@@ -32,9 +32,15 @@ public class PnlReportDto {
     private BigDecimal totalOperatingExpenses;
     private List<CategoryTotal> expensesByCategory;
 
-    // Net Profit
+    // Net Profit (before owner withdrawal)
     private BigDecimal netProfit;
     private BigDecimal netMarginPercent;
+
+    // Owner Withdrawal (Вивід з обороту)
+    private BigDecimal ownerWithdrawal;
+
+    // Retained Profit (net profit - owner withdrawal)
+    private BigDecimal retainedProfit;
 
     // Daily data for charts
     private List<DailyData> dailyData;
