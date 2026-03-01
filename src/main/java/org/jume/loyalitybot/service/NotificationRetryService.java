@@ -36,6 +36,11 @@ public class NotificationRetryService {
 
     @Transactional
     public BonusNotification createNotification(Customer customer, BigDecimal bonusAmount, String transactionId) {
+        return createNotification(customer, bonusAmount, null, transactionId);
+    }
+
+    @Transactional
+    public BonusNotification createNotification(Customer customer, BigDecimal bonusAmount, BigDecimal totalBonus, String transactionId) {
         BonusNotification notification = BonusNotification.builder()
                 .customer(customer)
                 .bonusAmount(bonusAmount)
@@ -44,10 +49,10 @@ public class NotificationRetryService {
                 .build();
 
         notification = notificationRepository.save(notification);
-        log.info("Created bonus notification {} for customer {}, amount: {}",
-                notification.getId(), customer.getTelegramId(), bonusAmount);
+        log.info("Created bonus notification {} for customer {}, amount: {}, total: {}",
+                notification.getId(), customer.getTelegramId(), bonusAmount, totalBonus);
 
-        sendNotification(notification);
+        sendNotificationWithTotal(notification, totalBonus);
         return notification;
     }
 
@@ -69,16 +74,25 @@ public class NotificationRetryService {
 
     @Transactional
     public void sendNotification(BonusNotification notification) {
+        sendNotificationWithTotal(notification, null);
+    }
+
+    @Transactional
+    public void sendNotificationWithTotal(BonusNotification notification, BigDecimal providedTotalBonus) {
         Customer customer = notification.getCustomer();
 
         try {
-            Optional<BigDecimal> totalBonus = posterApiService.getClientBonus(customer.getPosterClientId());
+            BigDecimal totalBonus = providedTotalBonus;
+            if (totalBonus == null) {
+                totalBonus = posterApiService.getClientBonus(customer.getPosterClientId())
+                        .orElse(notification.getBonusAmount());
+            }
 
             telegramBotService.sendBonusNotification(
                     customer.getTelegramId(),
                     customer.getDisplayName(),
                     notification.getBonusAmount(),
-                    totalBonus.orElse(notification.getBonusAmount())
+                    totalBonus
             );
 
             notification.markAsSent();
