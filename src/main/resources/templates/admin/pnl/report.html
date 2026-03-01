@@ -188,8 +188,8 @@
             <div class="card-header">
                 <h2>Структура витрат</h2>
             </div>
-            <div class="card-body">
-                <canvas id="expensesChart" height="200"></canvas>
+            <div class="card-body expenses-chart-container">
+                <canvas id="expensesChart"></canvas>
             </div>
         </div>
     </div>
@@ -340,6 +340,8 @@
             '#3b82f6', '#8b5cf6', '#ec4899', '#6b7280', '#0ea5e9'
         ];
 
+        const isMobile = window.innerWidth <= 768;
+
         new Chart(document.getElementById('expensesChart'), {
             type: 'doughnut',
             data: {
@@ -351,9 +353,17 @@
             },
             options: {
                 responsive: true,
+                maintainAspectRatio: true,
                 plugins: {
                     legend: {
-                        position: 'right',
+                        position: isMobile ? 'bottom' : 'right',
+                        labels: {
+                            boxWidth: isMobile ? 12 : 40,
+                            padding: isMobile ? 8 : 10,
+                            font: {
+                                size: isMobile ? 11 : 12
+                            }
+                        }
                     }
                 }
             }
@@ -412,6 +422,11 @@
             display: grid;
             grid-template-columns: repeat(2, 1fr);
             gap: 1.5rem;
+        }
+
+        .expenses-chart-container {
+            max-width: 400px;
+            margin: 0 auto;
         }
 
         .period-form {
@@ -542,8 +557,8 @@
                 height: 200px !important;
             }
 
-            #expensesChart {
-                height: 250px !important;
+            .expenses-chart-container {
+                max-width: 280px;
             }
         }
 
@@ -563,6 +578,7 @@
             .total-row.net-profit {
                 font-size: 0.95rem;
             }
+
         }
     </style>
 </div>
