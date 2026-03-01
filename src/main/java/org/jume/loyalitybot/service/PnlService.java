@@ -31,6 +31,19 @@ public class PnlService {
     public PnlReportDto generateReport(LocalDate dateFrom, LocalDate dateTo) {
         log.info("Generating P&L report from {} to {}", dateFrom, dateTo);
 
+        // Get accurate revenue from sales analytics (includes both cash and card)
+        PosterApiService.SalesAnalytics salesAnalytics = posterApiService.getSalesAnalytics(dateFrom, dateTo)
+                .orElse(null);
+
+        BigDecimal totalRevenue = BigDecimal.ZERO;
+        List<BigDecimal> dailyRevenueList = new ArrayList<>();
+
+        if (salesAnalytics != null) {
+            totalRevenue = salesAnalytics.getRevenue() != null ? salesAnalytics.getRevenue() : BigDecimal.ZERO;
+            dailyRevenueList = salesAnalytics.getDailyRevenue() != null ? salesAnalytics.getDailyRevenue() : new ArrayList<>();
+            log.info("Sales analytics: revenue={}, transactions={}", totalRevenue, salesAnalytics.getTransactions());
+        }
+
         List<FinanceTransactionDto> transactions = posterApiService.getFinanceTransactions(dateFrom, dateTo);
         log.info("Fetched {} finance transactions", transactions.size());
 
@@ -39,13 +52,7 @@ public class PnlService {
                 .filter(tx -> !TRANSFER_CATEGORIES.contains(tx.getCategoryId()))
                 .toList();
 
-        // Calculate revenue (Касові зміни - income type)
-        BigDecimal totalRevenue = relevantTransactions.stream()
-                .filter(tx -> REVENUE_CATEGORIES.contains(tx.getCategoryId()) && tx.isIncome())
-                .map(FinanceTransactionDto::getAmountInHryvnia)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-        // Calculate revenue by account
+        // Revenue by account (for informational purposes, from finance transactions)
         Map<String, BigDecimal> revenueByAccount = relevantTransactions.stream()
                 .filter(tx -> REVENUE_CATEGORIES.contains(tx.getCategoryId()) && tx.isIncome())
                 .collect(Collectors.groupingBy(
@@ -142,8 +149,8 @@ public class PnlService {
         // Retained profit (what's left after owner takes their share)
         BigDecimal retainedProfit = netProfit.subtract(ownerWithdrawal);
 
-        // Daily data for charts
-        List<DailyData> dailyData = calculateDailyData(relevantTransactions, dateFrom, dateTo);
+        // Daily data for charts (using sales analytics for revenue, finance transactions for expenses)
+        List<DailyData> dailyData = calculateDailyData(relevantTransactions, dateFrom, dateTo, dailyRevenueList);
 
         // All categories summary
         List<CategoryTotal> allCategories = new ArrayList<>();
@@ -183,22 +190,25 @@ public class PnlService {
     }
 
     private List<DailyData> calculateDailyData(List<FinanceTransactionDto> transactions,
-                                                LocalDate dateFrom, LocalDate dateTo) {
-        // Group transactions by date
+                                                LocalDate dateFrom, LocalDate dateTo,
+                                                List<BigDecimal> dailyRevenueFromAnalytics) {
+        // Group transactions by date for expenses calculation
         Map<LocalDate, List<FinanceTransactionDto>> byDate = transactions.stream()
                 .filter(tx -> tx.getParsedDate() != null)
                 .collect(Collectors.groupingBy(tx -> tx.getParsedDate().toLocalDate()));
 
         List<DailyData> result = new ArrayList<>();
         LocalDate current = dateFrom;
+        int dayIndex = 0;
 
         while (!current.isAfter(dateTo)) {
             List<FinanceTransactionDto> dayTransactions = byDate.getOrDefault(current, Collections.emptyList());
 
-            BigDecimal dayRevenue = dayTransactions.stream()
-                    .filter(tx -> REVENUE_CATEGORIES.contains(tx.getCategoryId()) && tx.isIncome())
-                    .map(FinanceTransactionDto::getAmountInHryvnia)
-                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+            // Use revenue from sales analytics if available
+            BigDecimal dayRevenue = BigDecimal.ZERO;
+            if (dailyRevenueFromAnalytics != null && dayIndex < dailyRevenueFromAnalytics.size()) {
+                dayRevenue = dailyRevenueFromAnalytics.get(dayIndex);
+            }
 
             BigDecimal dayExpenses = dayTransactions.stream()
                     .filter(tx -> !REVENUE_CATEGORIES.contains(tx.getCategoryId()))
@@ -215,6 +225,7 @@ public class PnlService {
                     .build());
 
             current = current.plusDays(1);
+            dayIndex++;
         }
 
         return result;
