@@ -78,11 +78,10 @@ public class UserCommandHandler {
             String cardNumber = posterClient.get().getCardNumber();
             log.info("Card number from Poster: {}", cardNumber);
 
+            // Use client_id as card number if card_number is not set
             if (cardNumber == null || cardNumber.isBlank()) {
-                log.warn("Card number is null or blank for client: {}", customer.getPosterClientId());
-                telegramBotService.sendMessage(chatId,
-                        "Не вдалося отримати номер картки. Спробуйте пізніше.");
-                return;
+                cardNumber = String.valueOf(customer.getPosterClientId());
+                log.info("Using client_id as card number: {}", cardNumber);
             }
 
             byte[] cardImage = barcodeService.generateLoyaltyCard(
