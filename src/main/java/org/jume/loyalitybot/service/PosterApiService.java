@@ -129,13 +129,22 @@ public class PosterApiService {
             JsonNode root = objectMapper.readTree(response);
             JsonNode responseNode = root.path("response");
 
-            if (!responseNode.isMissingNode() && responseNode.has("client_id")) {
-                Long clientId = responseNode.get("client_id").asLong();
+            if (!responseNode.isMissingNode()) {
+                // Response can be either a number (client_id directly) or an object with client_id
+                Long clientId;
+                if (responseNode.isNumber()) {
+                    clientId = responseNode.asLong();
+                } else if (responseNode.has("client_id")) {
+                    clientId = responseNode.get("client_id").asLong();
+                } else {
+                    log.warn("Failed to create client in Poster - unexpected response structure: {}", response);
+                    return Optional.empty();
+                }
                 log.info("Created new client in Poster with ID: {}", clientId);
                 return Optional.of(clientId);
             }
 
-            log.warn("Failed to create client in Poster - unexpected response: {}", response);
+            log.warn("Failed to create client in Poster - no response field: {}", response);
             return Optional.empty();
         } catch (Exception e) {
             log.error("Error creating client in Poster", e);
