@@ -94,8 +94,16 @@ public class TransactionDto {
         return toHryvnia(payedBonus);
     }
 
+    /**
+     * Calculate actual bonus earned based on sum and bonus percentage.
+     * Poster returns bonus as percentage (e.g., 3 means 3%), not as kopecks.
+     */
     public BigDecimal getBonusEarnedInHryvnia() {
-        return toHryvnia(bonusEarned);
+        if (bonusEarned == null || sum == null) return BigDecimal.ZERO;
+        // bonusEarned is the percentage (e.g., 3 for 3%)
+        // sum is in kopecks, so we calculate: (sum / 100) * (bonusEarned / 100)
+        return sum.multiply(bonusEarned)
+                .divide(BigDecimal.valueOf(10000), 2, java.math.RoundingMode.HALF_UP);
     }
 
     public BigDecimal getDiscountInHryvnia() {
