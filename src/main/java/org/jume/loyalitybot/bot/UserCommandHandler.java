@@ -78,10 +78,17 @@ public class UserCommandHandler {
             String cardNumber = posterClient.get().getCardNumber();
             log.info("Card number from Poster: {}", cardNumber);
 
-            // Use client_id as card number if card_number is not set
+            // Generate and set card number if not exists
             if (cardNumber == null || cardNumber.isBlank()) {
-                cardNumber = String.valueOf(customer.getPosterClientId());
-                log.info("Using client_id as card number: {}", cardNumber);
+                cardNumber = generateCardNumber();
+                log.info("Generated new card number: {}", cardNumber);
+                boolean updated = posterApiService.updateClientCardNumber(customer.getPosterClientId(), cardNumber);
+                if (!updated) {
+                    log.warn("Failed to update card number in Poster for client: {}", customer.getPosterClientId());
+                    telegramBotService.sendMessage(chatId,
+                            "Не вдалося згенерувати номер картки. Спробуйте пізніше.");
+                    return;
+                }
             }
 
             byte[] cardImage = barcodeService.generateLoyaltyCard(
@@ -124,5 +131,16 @@ public class UserCommandHandler {
                 З питань звертайтеся до персоналу кав'ярні.""";
 
         telegramBotService.sendMessage(chatId, helpMessage);
+    }
+
+    /**
+     * Generate unique card number
+     * Format: YYMM + 6 random digits (e.g., 2603123456)
+     */
+    private String generateCardNumber() {
+        java.time.LocalDate now = java.time.LocalDate.now();
+        String prefix = String.format("%02d%02d", now.getYear() % 100, now.getMonthValue());
+        int random = (int) (Math.random() * 1000000);
+        return prefix + String.format("%06d", random);
     }
 }

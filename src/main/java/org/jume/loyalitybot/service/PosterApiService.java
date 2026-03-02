@@ -106,12 +106,15 @@ public class PosterApiService {
     public Optional<Long> createClient(String firstName, String lastName, String phone, Long clientGroupId) {
         String clientName = (firstName + " " + lastName).trim();
         String normalizedPhone = normalizePhone(phone);
-        log.info("Creating new client in Poster: name='{}', phone='{}', groupId: {}", clientName, normalizedPhone, clientGroupId);
+        String cardNumber = generateCardNumber();
+        log.info("Creating new client in Poster: name='{}', phone='{}', groupId: {}, cardNumber: {}",
+                clientName, normalizedPhone, clientGroupId, cardNumber);
         try {
             // Build form data
             StringBuilder formData = new StringBuilder();
             formData.append("client_name=").append(java.net.URLEncoder.encode(clientName, java.nio.charset.StandardCharsets.UTF_8));
             formData.append("&client_phone=").append(java.net.URLEncoder.encode(normalizedPhone, java.nio.charset.StandardCharsets.UTF_8));
+            formData.append("&card_number=").append(cardNumber);
             if (clientGroupId != null) {
                 formData.append("&client_groups_id_client=").append(clientGroupId);
             }
@@ -177,6 +180,35 @@ public class PosterApiService {
             return success;
         } catch (Exception e) {
             log.error("Error updating birthday for client {}", clientId, e);
+            return false;
+        }
+    }
+
+    @CacheEvict(value = CacheConfig.POSTER_CLIENT_CACHE, key = "#clientId")
+    public boolean updateClientCardNumber(Long clientId, String cardNumber) {
+        log.info("Updating card number for client {}: {}", clientId, cardNumber);
+        try {
+            String response = posterRestClient.post()
+                    .uri(uriBuilder -> uriBuilder
+                            .path("/clients.updateClient")
+                            .queryParam("token", config.getToken())
+                            .queryParam("client_id", clientId)
+                            .queryParam("card_number", cardNumber)
+                            .build())
+                    .retrieve()
+                    .body(String.class);
+
+            JsonNode root = objectMapper.readTree(response);
+            boolean success = root.has("response") && !root.path("response").isNull();
+
+            if (success) {
+                log.info("Successfully updated card number for client {}", clientId);
+            } else {
+                log.warn("Failed to update card number for client {}: {}", clientId, response);
+            }
+            return success;
+        } catch (Exception e) {
+            log.error("Error updating card number for client {}", clientId, e);
             return false;
         }
     }
@@ -543,6 +575,17 @@ public class PosterApiService {
         private int transactions;
         private java.math.BigDecimal averageReceipt;
         private List<java.math.BigDecimal> dailyRevenue;
+    }
+
+    /**
+     * Generate unique card number for new clients
+     * Format: YYMM + 6 random digits (e.g., 2603123456)
+     */
+    private String generateCardNumber() {
+        java.time.LocalDate now = java.time.LocalDate.now();
+        String prefix = String.format("%02d%02d", now.getYear() % 100, now.getMonthValue());
+        int random = (int) (Math.random() * 1000000);
+        return prefix + String.format("%06d", random);
     }
 
     private String normalizePhone(String phone) {
