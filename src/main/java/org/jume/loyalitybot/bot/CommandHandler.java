@@ -59,9 +59,20 @@ public class CommandHandler {
         Customer customer = customerService.getOrCreateCustomer(telegramUser);
 
         if (customer.getStatus() == CustomerStatus.PENDING_PHONE) {
-            telegramBotService.sendMessage(chatId,
-                    "Будь ласка, завершіть реєстрацію, поділившись номером телефону.");
-            telegramBotService.requestContact(chatId);
+            // Check if text looks like a phone number
+            String normalizedPhone = normalizePhoneInput(text);
+            if (normalizedPhone != null) {
+                // Create a contact object from manual input
+                TelegramContact contact = new TelegramContact();
+                contact.setPhoneNumber(normalizedPhone);
+                contact.setFirstName(telegramUser.getFirstName());
+                contact.setLastName(telegramUser.getLastName());
+                customerService.processPhoneRegistration(telegramUser.getId(), contact);
+            } else {
+                telegramBotService.sendMessage(chatId,
+                        "Будь ласка, введіть коректний номер телефону або поділіться ним через кнопку нижче.");
+                telegramBotService.requestContact(chatId);
+            }
             return;
         }
 
@@ -176,5 +187,33 @@ public class CommandHandler {
             default -> telegramBotService.sendMessage(chatId,
                     "Невідома команда. Введіть /help для списку доступних команд.");
         }
+    }
+
+    /**
+     * Validates and normalizes phone number input.
+     * Returns normalized phone or null if invalid.
+     * Accepts formats: +380XXXXXXXXX, 380XXXXXXXXX, 0XXXXXXXXX
+     */
+    private String normalizePhoneInput(String input) {
+        if (input == null || input.isBlank()) {
+            return null;
+        }
+
+        // Remove all non-digit characters except leading +
+        String cleaned = input.trim().replaceAll("[^0-9+]", "");
+
+        // Remove leading + for easier processing
+        if (cleaned.startsWith("+")) {
+            cleaned = cleaned.substring(1);
+        }
+
+        // Check different formats
+        if (cleaned.startsWith("380") && cleaned.length() == 12) {
+            return cleaned;
+        } else if (cleaned.startsWith("0") && cleaned.length() == 10) {
+            return "38" + cleaned;
+        }
+
+        return null;
     }
 }
