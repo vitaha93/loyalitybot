@@ -63,20 +63,39 @@ public class CustomerService {
         Optional<PosterClientDto> existingClient = posterApiService.findClientByPhone(phone);
 
         if (existingClient.isPresent()) {
-            // Existing client in Poster - just link, no welcome bonus
-            linkToPosterClient(customer, existingClient.get());
+            // Existing client in Poster - link and check if birthday is missing
+            PosterClientDto posterClient = existingClient.get();
+            linkToPosterClient(customer, posterClient);
             customer.setIsNewClient(false);
-            customer.setStatus(CustomerStatus.ACTIVE);
-            customer = customerRepository.save(customer);
 
-            log.info("Linked customer {} to existing Poster client {}", customer.getTelegramId(), existingClient.get().getClientId());
+            boolean hasBirthday = posterClient.getBirthday() != null && !posterClient.getBirthday().isBlank()
+                    && !"0000-00-00".equals(posterClient.getBirthday());
 
-            // Send welcome message for existing client (no bonus mention)
-            telegramBotService.sendMessageWithMainMenu(telegramId,
-                    String.format("Вітаємо, %s!\n\n" +
-                            "Ви успішно приєднались до програми лояльності.\n" +
-                            "Тепер ви можете отримувати сповіщення про бонуси.",
-                            customer.getDisplayName()));
+            if (hasBirthday) {
+                customer.setStatus(CustomerStatus.ACTIVE);
+                customer = customerRepository.save(customer);
+
+                log.info("Linked customer {} to existing Poster client {}", customer.getTelegramId(), posterClient.getClientId());
+
+                // Send welcome message for existing client (no bonus mention)
+                telegramBotService.sendMessageWithMainMenu(telegramId,
+                        String.format("Вітаємо, %s!\n\n" +
+                                "Ви успішно приєднались до програми лояльності.\n" +
+                                "Тепер ви можете отримувати сповіщення про бонуси.",
+                                customer.getDisplayName()));
+            } else {
+                // Existing client but no birthday - ask for it
+                customer.setStatus(CustomerStatus.PENDING_BIRTHDAY);
+                customer = customerRepository.save(customer);
+
+                log.info("Linked customer {} to existing Poster client {}, asking for birthday", customer.getTelegramId(), posterClient.getClientId());
+
+                telegramBotService.sendMessage(telegramId,
+                        String.format("Вітаємо, %s!\n\n" +
+                                "Ви успішно приєднались до програми лояльності.\n\n" +
+                                "Будь ласка, введіть дату вашого народження у форматі ДД.ММ.РРРР (наприклад, 25.12.1990):",
+                                customer.getDisplayName()));
+            }
         } else {
             // New client - create in Poster, ask for birthday
             createPosterClientAndLink(customer);

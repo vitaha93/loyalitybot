@@ -159,13 +159,18 @@ public class PosterApiService {
     public boolean updateClientBirthday(Long clientId, String birthday) {
         log.info("Updating birthday for client {}: {}", clientId, birthday);
         try {
+            // Build form data - Poster API requires form data for updateClient
+            StringBuilder formData = new StringBuilder();
+            formData.append("client_id=").append(clientId);
+            formData.append("&birthday=").append(java.net.URLEncoder.encode(birthday, java.nio.charset.StandardCharsets.UTF_8));
+
             String response = posterRestClient.post()
                     .uri(uriBuilder -> uriBuilder
                             .path("/clients.updateClient")
                             .queryParam("token", config.getToken())
-                            .queryParam("client_id", clientId)
-                            .queryParam("birthday", birthday)
                             .build())
+                    .contentType(org.springframework.http.MediaType.APPLICATION_FORM_URLENCODED)
+                    .body(formData.toString())
                     .retrieve()
                     .body(String.class);
 
@@ -188,13 +193,18 @@ public class PosterApiService {
     public boolean updateClientCardNumber(Long clientId, String cardNumber) {
         log.info("Updating card number for client {}: {}", clientId, cardNumber);
         try {
+            // Build form data - Poster API requires form data for updateClient
+            StringBuilder formData = new StringBuilder();
+            formData.append("client_id=").append(clientId);
+            formData.append("&card_number=").append(java.net.URLEncoder.encode(cardNumber, java.nio.charset.StandardCharsets.UTF_8));
+
             String response = posterRestClient.post()
                     .uri(uriBuilder -> uriBuilder
                             .path("/clients.updateClient")
                             .queryParam("token", config.getToken())
-                            .queryParam("client_id", clientId)
-                            .queryParam("card_number", cardNumber)
                             .build())
+                    .contentType(org.springframework.http.MediaType.APPLICATION_FORM_URLENCODED)
+                    .body(formData.toString())
                     .retrieve()
                     .body(String.class);
 
@@ -401,13 +411,18 @@ public class PosterApiService {
     public boolean setClientDiscount(Long clientId, Integer discountPercent) {
         log.info("Setting {}% discount for client {}", discountPercent, clientId);
         try {
+            // Build form data - Poster API requires form data for updateClient
+            StringBuilder formData = new StringBuilder();
+            formData.append("client_id=").append(clientId);
+            formData.append("&discount_per=").append(discountPercent);
+
             String response = posterRestClient.post()
                     .uri(uriBuilder -> uriBuilder
                             .path("/clients.updateClient")
                             .queryParam("token", config.getToken())
-                            .queryParam("client_id", clientId)
-                            .queryParam("discount_per", discountPercent)
                             .build())
+                    .contentType(org.springframework.http.MediaType.APPLICATION_FORM_URLENCODED)
+                    .body(formData.toString())
                     .retrieve()
                     .body(String.class);
 
