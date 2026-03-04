@@ -60,7 +60,8 @@ public class CustomerService {
         String phone = normalizePhone(contact.getPhoneNumber());
         customer.setPhone(phone);
 
-        Optional<PosterClientDto> existingClient = posterApiService.findClientByPhone(phone);
+        // Use fresh lookup to bypass cache and get current data from Poster
+        Optional<PosterClientDto> existingClient = posterApiService.findClientByPhoneFresh(phone);
 
         if (existingClient.isPresent()) {
             // Existing client in Poster - link and check if birthday is missing
@@ -68,6 +69,7 @@ public class CustomerService {
             linkToPosterClient(customer, posterClient);
             customer.setIsNewClient(false);
 
+            log.info("Poster client {} birthday value: '{}'", posterClient.getClientId(), posterClient.getBirthday());
             boolean hasBirthday = posterClient.getBirthday() != null && !posterClient.getBirthday().isBlank()
                     && !"0000-00-00".equals(posterClient.getBirthday());
 

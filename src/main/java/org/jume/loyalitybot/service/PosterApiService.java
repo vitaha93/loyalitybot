@@ -35,6 +35,18 @@ public class PosterApiService {
 
     @Cacheable(value = CacheConfig.POSTER_CLIENT_CACHE, key = "#phone", unless = "#result == null")
     public Optional<PosterClientDto> findClientByPhone(String phone) {
+        return findClientByPhoneInternal(phone);
+    }
+
+    /**
+     * Find client by phone without caching - use for registration to ensure fresh data
+     */
+    @CacheEvict(value = CacheConfig.POSTER_CLIENT_CACHE, key = "#phone")
+    public Optional<PosterClientDto> findClientByPhoneFresh(String phone) {
+        return findClientByPhoneInternal(phone);
+    }
+
+    private Optional<PosterClientDto> findClientByPhoneInternal(String phone) {
         log.debug("Searching for client by phone: {}", phone);
         try {
             String response = posterRestClient.get()
@@ -50,8 +62,9 @@ public class PosterApiService {
             JsonNode responseNode = root.path("response");
 
             if (responseNode.isArray() && !responseNode.isEmpty()) {
+                log.debug("Raw Poster client response: {}", responseNode.get(0));
                 PosterClientDto client = objectMapper.treeToValue(responseNode.get(0), PosterClientDto.class);
-                log.info("Found client in Poster: {}", client.getClientId());
+                log.info("Found client in Poster: {}, birthday: '{}'", client.getClientId(), client.getBirthday());
                 return Optional.of(client);
             }
 
@@ -168,6 +181,7 @@ public class PosterApiService {
                     .uri(uriBuilder -> uriBuilder
                             .path("/clients.updateClient")
                             .queryParam("token", config.getToken())
+                            .queryParam("client_id", clientId)
                             .build())
                     .contentType(org.springframework.http.MediaType.APPLICATION_FORM_URLENCODED)
                     .body(formData.toString())
@@ -202,6 +216,7 @@ public class PosterApiService {
                     .uri(uriBuilder -> uriBuilder
                             .path("/clients.updateClient")
                             .queryParam("token", config.getToken())
+                            .queryParam("client_id", clientId)
                             .build())
                     .contentType(org.springframework.http.MediaType.APPLICATION_FORM_URLENCODED)
                     .body(formData.toString())
@@ -420,6 +435,7 @@ public class PosterApiService {
                     .uri(uriBuilder -> uriBuilder
                             .path("/clients.updateClient")
                             .queryParam("token", config.getToken())
+                            .queryParam("client_id", clientId)
                             .build())
                     .contentType(org.springframework.http.MediaType.APPLICATION_FORM_URLENCODED)
                     .body(formData.toString())
