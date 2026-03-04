@@ -31,6 +31,9 @@ public class TelegramUpdate {
         private TelegramContact contact;
 
         private Long date;
+
+        @JsonProperty("reply_to_message")
+        private TelegramMessage replyToMessage;
     }
 
     @Data
@@ -98,5 +101,9 @@ public class TelegramUpdate {
 
     public boolean hasContact() {
         return message != null && message.getContact() != null;
+    }
+
+    public boolean hasReplyToMessage() {
+        return message != null && message.getReplyToMessage() != null;
     }
 }

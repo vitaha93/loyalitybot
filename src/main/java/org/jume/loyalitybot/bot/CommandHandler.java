@@ -9,6 +9,7 @@ import org.jume.loyalitybot.dto.TelegramUpdate.TelegramMessage;
 import org.jume.loyalitybot.dto.TelegramUpdate.TelegramUser;
 import org.jume.loyalitybot.model.Customer;
 import org.jume.loyalitybot.model.Customer.CustomerStatus;
+import org.jume.loyalitybot.service.ChatService;
 import org.jume.loyalitybot.service.CustomerService;
 import org.jume.loyalitybot.service.TelegramBotService;
 import org.springframework.stereotype.Component;
@@ -25,6 +26,7 @@ public class CommandHandler {
     private final CustomerService customerService;
     private final TelegramBotService telegramBotService;
     private final AdminConfig adminConfig;
+    private final ChatService chatService;
 
     public void handleUpdate(TelegramUpdate update) {
         if (!update.hasMessage()) {
@@ -36,6 +38,25 @@ public class CommandHandler {
         Long chatId = message.getChat().getId();
 
         log.debug("Received message from user {} ({})", telegramUser.getId(), telegramUser.getUsername());
+
+        // Check for admin reply to a customer message
+        if (update.hasReplyToMessage() && update.hasText() && adminConfig.isAdmin(telegramUser.getId())) {
+            TelegramMessage replyTo = message.getReplyToMessage();
+            String replyText = message.getText().trim();
+
+            boolean handled = chatService.processAdminReply(
+                    telegramUser.getId(),
+                    replyTo.getMessageId(),
+                    chatId,
+                    replyText
+            );
+
+            if (handled) {
+                telegramBotService.sendMessage(chatId, "Відповідь надіслано клієнту.");
+                return;
+            }
+            // If not handled, continue with normal flow
+        }
 
         if (update.hasContact()) {
             handleContact(telegramUser, message.getContact());
@@ -51,11 +72,11 @@ public class CommandHandler {
         if (text.startsWith("/")) {
             handleCommand(telegramUser, chatId, text);
         } else {
-            handleButtonText(telegramUser, chatId, text);
+            handleButtonText(telegramUser, chatId, text, message.getMessageId());
         }
     }
 
-    private void handleButtonText(TelegramUser telegramUser, Long chatId, String text) {
+    private void handleButtonText(TelegramUser telegramUser, Long chatId, String text, Long messageId) {
         Customer customer = customerService.getOrCreateCustomer(telegramUser);
 
         if (customer.getStatus() == CustomerStatus.PENDING_PHONE) {
@@ -86,6 +107,12 @@ public class CommandHandler {
             case "💰 Баланс" -> userCommandHandler.handleBalance(chatId, customer);
             case "🎫 Картка" -> userCommandHandler.handleCard(chatId, customer);
             case "❓ Допомога" -> userCommandHandler.handleHelp(chatId);
+            default -> {
+                // Forward unrecognized text from ACTIVE customers to admins as a support message
+                if (customer.getStatus() == CustomerStatus.ACTIVE) {
+                    chatService.processCustomerMessage(customer, text, messageId);
+                }
+            }
         }
     }
 

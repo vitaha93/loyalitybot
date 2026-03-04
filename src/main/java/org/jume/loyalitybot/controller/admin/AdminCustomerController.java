@@ -4,8 +4,10 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jume.loyalitybot.dto.PosterClientDto;
 import org.jume.loyalitybot.dto.admin.TelegramLoginData;
+import org.jume.loyalitybot.model.ChatMessage;
 import org.jume.loyalitybot.model.Customer;
 import org.jume.loyalitybot.service.AdminStatsService;
+import org.jume.loyalitybot.service.ChatService;
 import org.jume.loyalitybot.service.CustomerService;
 import org.jume.loyalitybot.service.PosterApiService;
 import org.jume.loyalitybot.service.TelegramBotService;
@@ -22,6 +24,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import jakarta.servlet.http.HttpSession;
+import java.util.List;
 import java.util.Optional;
 
 @Controller
@@ -34,6 +37,7 @@ public class AdminCustomerController {
     private final PosterApiService posterApiService;
     private final AdminStatsService adminStatsService;
     private final TelegramBotService telegramBotService;
+    private final ChatService chatService;
 
     @GetMapping
     public String listCustomers(
@@ -126,6 +130,11 @@ public class AdminCustomerController {
                 adminStatsService.getClientFavoriteProducts(customer.getPosterClientId(), 5));
         }
 
+        // Get chat messages and mark them as read
+        List<ChatMessage> chatMessages = chatService.getCustomerChatMessages(id);
+        model.addAttribute("chatMessages", chatMessages);
+        chatService.markMessagesAsRead(id);
+
         return "admin/customers/detail";
     }
 
@@ -151,5 +160,38 @@ public class AdminCustomerController {
         }
 
         return "redirect:/admin/customers/" + id;
+    }
+
+    @PostMapping("/{id}/chat")
+    public String sendChatMessage(
+            @PathVariable Long id,
+            @RequestParam String message,
+            RedirectAttributes redirectAttributes,
+            HttpSession session) {
+
+        Optional<Customer> customerOpt = customerService.getCustomerById(id);
+        if (customerOpt.isEmpty()) {
+            return "redirect:/admin/customers?error=notfound";
+        }
+
+        TelegramLoginData admin = (TelegramLoginData) session.getAttribute("admin");
+        Long adminTelegramId = admin != null ? admin.getId() : 0L;
+
+        Customer customer = customerOpt.get();
+        try {
+            boolean success = chatService.sendAdminMessage(customer, message, adminTelegramId);
+            if (success) {
+                log.info("Admin {} sent chat message to customer {} (telegramId={})",
+                        adminTelegramId, id, customer.getTelegramId());
+                redirectAttributes.addFlashAttribute("chatSent", true);
+            } else {
+                redirectAttributes.addFlashAttribute("chatError", "Не вдалося надіслати повідомлення");
+            }
+        } catch (Exception e) {
+            log.error("Failed to send chat message to customer {}: {}", id, e.getMessage());
+            redirectAttributes.addFlashAttribute("chatError", e.getMessage());
+        }
+
+        return "redirect:/admin/customers/" + id + "#chat";
     }
 }

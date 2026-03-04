@@ -31,6 +31,10 @@ public class TelegramApiClient {
     }
 
     public void sendMessage(Long chatId, String text, String parseMode, Object replyMarkup) {
+        sendMessageAndGetId(chatId, text, parseMode, replyMarkup);
+    }
+
+    public Long sendMessageAndGetId(Long chatId, String text, String parseMode, Object replyMarkup) {
         try {
             var body = new java.util.HashMap<String, Object>();
             body.put("chat_id", chatId);
@@ -52,7 +56,9 @@ public class TelegramApiClient {
             JsonNode result = objectMapper.readTree(response);
             if (!result.path("ok").asBoolean()) {
                 log.error("Failed to send message: {}", result);
+                return null;
             }
+            return result.path("result").path("message_id").asLong();
         } catch (Exception e) {
             log.error("Error sending message to chat {}", chatId, e);
             throw new RuntimeException("Failed to send Telegram message", e);

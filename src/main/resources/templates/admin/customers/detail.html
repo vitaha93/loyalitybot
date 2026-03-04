@@ -107,6 +107,50 @@
             </div>
         </div>
 
+        <!-- Chat History -->
+        <div class="card full-width" id="chat">
+            <div class="card-header">
+                <h2>Історія чату</h2>
+            </div>
+            <div class="card-body">
+                <div class="chat-container" th:if="${chatMessages != null and !chatMessages.isEmpty()}">
+                    <div th:each="msg : ${chatMessages}"
+                         class="chat-message"
+                         th:classappend="${msg.senderType.name() == 'CUSTOMER'} ? 'chat-message-left' : 'chat-message-right'">
+                        <div class="chat-bubble"
+                             th:classappend="${msg.senderType.name() == 'CUSTOMER'} ? 'chat-bubble-customer' : 'chat-bubble-admin'">
+                            <div class="chat-text" th:text="${msg.messageText}">Message text</div>
+                            <div class="chat-meta">
+                                <span class="chat-sender" th:text="${msg.senderType.name() == 'CUSTOMER'} ? 'Клієнт' : 'Адмін'">Sender</span>
+                                <span class="chat-time" th:text="${#temporals.format(msg.createdAt, 'dd.MM.yyyy HH:mm')}">01.01.2024 12:00</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <p th:if="${chatMessages == null or chatMessages.isEmpty()}" class="empty-state">
+                    Немає повідомлень
+                </p>
+
+                <!-- Chat Reply Form -->
+                <div class="chat-reply-form">
+                    <form th:action="@{/admin/customers/{id}/chat(id=${customer.id})}" method="post">
+                        <div class="form-group">
+                            <label for="chatMessage">Відповісти клієнту</label>
+                            <textarea id="chatMessage" name="message" rows="3" required class="form-control"
+                                      placeholder="Введіть відповідь..."></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Надіслати</button>
+                    </form>
+                    <div th:if="${chatSent}" class="alert alert-success mt-2">
+                        Повідомлення надіслано!
+                    </div>
+                    <div th:if="${chatError}" class="alert alert-danger mt-2">
+                        Помилка: <span th:text="${chatError}">error</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Send Message -->
         <div class="card">
             <div class="card-header">

@@ -25,6 +25,12 @@ public class TelegramBotService {
         log.debug("Message sent to chat {}", chatId);
     }
 
+    public Long sendMessageWithId(Long chatId, String text) {
+        Long messageId = telegramApiClient.sendMessageAndGetId(chatId, text, "HTML", null);
+        log.debug("Message sent to chat {}, messageId={}", chatId, messageId);
+        return messageId;
+    }
+
     public void sendMessageWithMainMenu(Long chatId, String text) {
         telegramApiClient.sendMessage(chatId, text, "HTML", telegramApiClient.createMainMenuKeyboard());
         log.debug("Message with main menu sent to chat {}", chatId);
