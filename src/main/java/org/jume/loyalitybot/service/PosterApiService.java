@@ -126,7 +126,7 @@ public class PosterApiService {
             // Build form data
             StringBuilder formData = new StringBuilder();
             formData.append("client_name=").append(java.net.URLEncoder.encode(clientName, java.nio.charset.StandardCharsets.UTF_8));
-            formData.append("&client_phone=").append(java.net.URLEncoder.encode(normalizedPhone, java.nio.charset.StandardCharsets.UTF_8));
+            formData.append("&phone=").append(java.net.URLEncoder.encode(normalizedPhone, java.nio.charset.StandardCharsets.UTF_8));
             formData.append("&card_number=").append(cardNumber);
             if (clientGroupId != null) {
                 formData.append("&client_groups_id_client=").append(clientGroupId);
