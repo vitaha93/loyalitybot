@@ -238,6 +238,41 @@ public class PosterApiService {
         }
     }
 
+    @CacheEvict(value = CacheConfig.POSTER_CLIENT_CACHE, key = "#clientId")
+    public boolean updateClientPhone(Long clientId, String phone) {
+        String normalizedPhone = normalizePhone(phone);
+        log.info("Updating phone for client {}: {}", clientId, normalizedPhone);
+        try {
+            StringBuilder formData = new StringBuilder();
+            formData.append("client_id=").append(clientId);
+            formData.append("&phone=").append(java.net.URLEncoder.encode(normalizedPhone, java.nio.charset.StandardCharsets.UTF_8));
+
+            String response = posterRestClient.post()
+                    .uri(uriBuilder -> uriBuilder
+                            .path("/clients.updateClient")
+                            .queryParam("token", config.getToken())
+                            .queryParam("client_id", clientId)
+                            .build())
+                    .contentType(org.springframework.http.MediaType.APPLICATION_FORM_URLENCODED)
+                    .body(formData.toString())
+                    .retrieve()
+                    .body(String.class);
+
+            JsonNode root = objectMapper.readTree(response);
+            boolean success = root.has("response") && !root.path("response").isNull();
+
+            if (success) {
+                log.info("Successfully updated phone for client {}", clientId);
+            } else {
+                log.warn("Failed to update phone for client {}: {}", clientId, response);
+            }
+            return success;
+        } catch (Exception e) {
+            log.error("Error updating phone for client {}", clientId, e);
+            return false;
+        }
+    }
+
     @Cacheable(value = CacheConfig.POSTER_BONUS_CACHE, key = "#clientId")
     public Optional<BigDecimal> getClientBonus(Long clientId) {
         log.debug("Getting bonus for client: {}", clientId);
