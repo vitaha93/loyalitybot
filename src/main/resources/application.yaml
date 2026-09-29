@@ -59,6 +59,7 @@ poster:
 # Loyalty Program Settings
 loyalty:
   welcome-bonus: ${LOYALTY_WELCOME_BONUS:50}
+  birthday-bonus: ${LOYALTY_BIRTHDAY_BONUS:50}
   bonus-percent: ${LOYALTY_BONUS_PERCENT:5}
   currency-symbol: ${LOYALTY_CURRENCY_SYMBOL:грн}
 
@@ -78,6 +79,8 @@ scheduling:
   enabled: ${SCHEDULING_ENABLED:true}
   retry-cron: "0 */5 * * * *"
   broadcast-cron: "0 */1 * * * *"
+  birthday-digest-cron: "0 0 8 * * *"
+  birthday-greeting-cron: "0 0 9 * * *"
 
 # Logging
 logging:

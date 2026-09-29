@@ -3,15 +3,25 @@ package org.jume.loyalitybot.service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jume.loyalitybot.config.AdminConfig;
+import org.jume.loyalitybot.config.LoyaltyConfig;
 import org.jume.loyalitybot.dto.PosterClientDto;
+import org.jume.loyalitybot.model.BirthdayGreeting;
+import org.jume.loyalitybot.model.Customer;
+import org.jume.loyalitybot.model.Customer.CustomerStatus;
+import org.jume.loyalitybot.repository.BirthdayGreetingRepository;
+import org.jume.loyalitybot.repository.CustomerRepository;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 @Service
@@ -21,7 +31,15 @@ public class BirthdayNotificationService {
 
     private final PosterApiService posterApiService;
     private final TelegramBotService telegramBotService;
+    private final CustomerRepository customerRepository;
+    private final BirthdayGreetingRepository birthdayGreetingRepository;
     private final AdminConfig adminConfig;
+    private final LoyaltyConfig loyaltyConfig;
+
+    private static final ZoneId KYIV = ZoneId.of("Europe/Kyiv");
+    private static final String BONUS_COMMENT = "День народження";
+    private static final long SEND_DELAY_MS = 50;
+    private static final BigDecimal SAMPLE_BALANCE = BigDecimal.valueOf(120);
 
     private static final List<DateTimeFormatter> BIRTHDAY_FORMATTERS = List.of(
             DateTimeFormatter.ofPattern("yyyy-MM-dd"),
@@ -31,10 +49,11 @@ public class BirthdayNotificationService {
     );
 
     /**
-     * Runs every day at 8:00 AM Kyiv time.
-     * Checks all Poster clients for birthdays and notifies admins.
+     * Runs every day at 8:00 AM Kyiv time — before the shift starts.
+     * Sends admins the list of today's birthdays so the barista can greet
+     * the clients who are not in the bot in person.
      */
-    @Scheduled(cron = "0 0 8 * * *", zone = "Europe/Kyiv")
+    @Scheduled(cron = "${scheduling.birthday-digest-cron:0 0 8 * * *}", zone = "Europe/Kyiv")
     public void checkBirthdays() {
         log.info("Starting birthday check");
 
@@ -44,18 +63,7 @@ public class BirthdayNotificationService {
             return;
         }
 
-        LocalDate today = LocalDate.now();
-        int todayMonth = today.getMonthValue();
-        int todayDay = today.getDayOfMonth();
-
-        List<PosterClientDto> allClients = posterApiService.getAllClients();
-        List<PosterClientDto> birthdayClients = new ArrayList<>();
-
-        for (PosterClientDto client : allClients) {
-            if (hasBirthdayToday(client.getBirthday(), todayMonth, todayDay)) {
-                birthdayClients.add(client);
-            }
-        }
+        List<PosterClientDto> birthdayClients = findTodaysBirthdayClients();
 
         if (birthdayClients.isEmpty()) {
             log.info("No birthdays today");
@@ -64,9 +72,153 @@ public class BirthdayNotificationService {
 
         log.info("Found {} clients with birthdays today", birthdayClients.size());
 
-        String message = formatBirthdayMessage(birthdayClients);
+        notifyAdmins(formatBirthdayMessage(birthdayClients));
+    }
 
-        for (Long adminId : adminIds) {
+    /**
+     * Runs every day at 9:00 AM Kyiv time — the start of the morning peak.
+     * Greets today's birthday clients who are in the bot, grants the birthday bonus
+     * and reports the result back to the admins.
+     * <p>
+     * Every greeting is recorded in {@code birthday_greetings} with a unique
+     * (customer, year) key, so a restart or a second run never greets — or pays — twice.
+     */
+    @Scheduled(cron = "${scheduling.birthday-greeting-cron:0 0 9 * * *}", zone = "Europe/Kyiv")
+    public void greetBirthdayCustomers() {
+        log.info("Starting birthday greetings");
+
+        List<PosterClientDto> birthdayClients = findTodaysBirthdayClients();
+        if (birthdayClients.isEmpty()) {
+            log.info("No birthdays today, nothing to greet");
+            return;
+        }
+
+        int year = LocalDate.now(KYIV).getYear();
+        int sent = 0;
+        int failed = 0;
+        int notInBot = 0;
+
+        for (PosterClientDto client : birthdayClients) {
+            Optional<Customer> customerOpt = findGreetableCustomer(client);
+            if (customerOpt.isEmpty()) {
+                notInBot++;
+                continue;
+            }
+
+            Customer customer = customerOpt.get();
+            Optional<BirthdayGreeting> greetingOpt = reserveGreeting(customer, year);
+            if (greetingOpt.isEmpty()) {
+                log.info("Customer {} already greeted in {}, skipping", customer.getId(), year);
+                continue;
+            }
+
+            if (greetCustomer(customer, greetingOpt.get())) {
+                sent++;
+            } else {
+                failed++;
+            }
+
+            try {
+                Thread.sleep(SEND_DELAY_MS);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                log.warn("Birthday greeting job interrupted");
+                break;
+            }
+        }
+
+        log.info("Birthday greetings finished: sent={}, failed={}, notInBot={}", sent, failed, notInBot);
+
+        if (sent > 0 || failed > 0) {
+            notifyAdmins(formatGreetingSummary(sent, failed, notInBot));
+        }
+    }
+
+    /**
+     * Creates the greeting record before any money or message goes out.
+     * The unique (customer, year) constraint is what makes the job safe to re-run.
+     */
+    private Optional<BirthdayGreeting> reserveGreeting(Customer customer, int year) {
+        if (birthdayGreetingRepository.existsByCustomerIdAndGreetingYear(customer.getId(), year)) {
+            return Optional.empty();
+        }
+
+        BirthdayGreeting greeting = BirthdayGreeting.builder()
+                .customer(customer)
+                .posterClientId(customer.getPosterClientId())
+                .greetingYear(year)
+                .build();
+
+        try {
+            return Optional.of(birthdayGreetingRepository.saveAndFlush(greeting));
+        } catch (DataIntegrityViolationException e) {
+            // Another instance reserved the same customer between the check and the insert
+            log.info("Greeting for customer {} in {} already reserved elsewhere", customer.getId(), year);
+            return Optional.empty();
+        }
+    }
+
+    /**
+     * Grants the birthday bonus and sends the greeting.
+     * If Poster refuses the bonus the customer is still greeted, without the bonus line.
+     */
+    private boolean greetCustomer(Customer customer, BirthdayGreeting greeting) {
+        BigDecimal bonus = loyaltyConfig.getBirthdayBonus();
+        boolean bonusGranted = false;
+        BigDecimal totalBonus = null;
+
+        if (bonus != null && bonus.compareTo(BigDecimal.ZERO) > 0 && customer.getPosterClientId() != null) {
+            bonusGranted = posterApiService.addBonus(customer.getPosterClientId(), bonus, BONUS_COMMENT);
+            if (bonusGranted) {
+                totalBonus = posterApiService.getClientBonus(customer.getPosterClientId()).orElse(null);
+            } else {
+                log.warn("Failed to grant birthday bonus to customer {} (poster: {})",
+                        customer.getId(), customer.getPosterClientId());
+            }
+        }
+
+        greeting.setBonusAmount(bonusGranted ? bonus : BigDecimal.ZERO);
+
+        boolean delivered = telegramBotService.sendBirthdayGreeting(
+                customer.getTelegramId(),
+                greetingName(customer),
+                bonusGranted ? bonus : BigDecimal.ZERO,
+                totalBonus);
+
+        if (delivered) {
+            greeting.markAsSent(bonusGranted);
+            log.info("Sent birthday greeting to customer {} (bonus granted: {})", customer.getId(), bonusGranted);
+        } else {
+            greeting.markAsFailed("Telegram не прийняв повідомлення");
+            log.warn("Failed to deliver birthday greeting to customer {}", customer.getId());
+        }
+
+        birthdayGreetingRepository.save(greeting);
+        return delivered;
+    }
+
+    /**
+     * Only active bot customers can be greeted — clients that exist in Poster
+     * but never finished registration have no usable chat.
+     */
+    private Optional<Customer> findGreetableCustomer(PosterClientDto client) {
+        if (client.getClientId() == null) {
+            return Optional.empty();
+        }
+        return customerRepository.findByPosterClientId(client.getClientId())
+                .filter(c -> c.getTelegramId() != null)
+                .filter(c -> c.getStatus() == CustomerStatus.ACTIVE);
+    }
+
+    private String greetingName(Customer customer) {
+        if (customer.getFirstName() != null && !customer.getFirstName().isBlank()) {
+            return customer.getFirstName();
+        }
+        return customer.getDisplayName();
+    }
+
+    private void notifyAdmins(String message) {
+        for (Long adminId : adminConfig.getAdminTelegramIds()) {
             try {
                 telegramBotService.sendMessage(adminId, message);
                 log.info("Sent birthday notification to admin {}", adminId);
@@ -74,6 +226,41 @@ public class BirthdayNotificationService {
                 log.error("Failed to send birthday notification to admin {}: {}", adminId, e.getMessage());
             }
         }
+    }
+
+    public List<PosterClientDto> findTodaysBirthdayClients() {
+        LocalDate today = LocalDate.now(KYIV);
+        int todayMonth = today.getMonthValue();
+        int todayDay = today.getDayOfMonth();
+
+        List<PosterClientDto> birthdayClients = new ArrayList<>();
+        for (PosterClientDto client : posterApiService.getAllClients()) {
+            if (hasBirthdayToday(client.getBirthday(), todayMonth, todayDay)) {
+                birthdayClients.add(client);
+            }
+        }
+        return birthdayClients;
+    }
+
+    /**
+     * Sends the greeting exactly as a customer would see it, without granting a bonus
+     * and without recording anything — used from the admin panel to preview the text.
+     */
+    public boolean sendTestGreeting(Long chatId, String name) {
+        BigDecimal bonus = loyaltyConfig.getBirthdayBonus();
+        log.info("Sending test birthday greeting to chat {}", chatId);
+        return telegramBotService.sendBirthdayGreeting(chatId, name, bonus, SAMPLE_BALANCE);
+    }
+
+    /**
+     * True when the customer behind this Poster client is an active bot user
+     * who has not been greeted yet this year.
+     */
+    public boolean willBeGreetedToday(PosterClientDto client) {
+        int year = LocalDate.now(KYIV).getYear();
+        return findGreetableCustomer(client)
+                .map(c -> !birthdayGreetingRepository.existsByCustomerIdAndGreetingYear(c.getId(), year))
+                .orElse(false);
     }
 
     private boolean hasBirthdayToday(String birthday, int todayMonth, int todayDay) {
@@ -124,9 +311,12 @@ public class BirthdayNotificationService {
     }
 
     private String formatBirthdayMessage(List<PosterClientDto> clients) {
+        int year = LocalDate.now(KYIV).getYear();
         StringBuilder sb = new StringBuilder();
         sb.append("<b>🎂 Дні народження сьогодні:</b>\n\n");
 
+        int willBeGreeted = 0;
+        int atCounter = 0;
         for (PosterClientDto client : clients) {
             String name = formatClientName(client);
             sb.append("• <b>").append(name).append("</b>");
@@ -140,10 +330,39 @@ public class BirthdayNotificationService {
             if (client.getBonusInHryvnia() != null && client.getBonusInHryvnia().compareTo(java.math.BigDecimal.ZERO) > 0) {
                 sb.append("  Бонуси: ").append(client.getBonusInHryvnia()).append(" грн\n");
             }
+
+            Optional<Customer> customer = findGreetableCustomer(client);
+            boolean alreadyGreeted = customer
+                    .map(c -> birthdayGreetingRepository.existsByCustomerIdAndGreetingYear(c.getId(), year))
+                    .orElse(false);
+
+            if (alreadyGreeted) {
+                sb.append("  ✅ вже привітали в боті\n");
+            } else if (customer.isPresent()) {
+                willBeGreeted++;
+                sb.append("  🤖 бот привітає о 9:00\n");
+            } else {
+                atCounter++;
+                sb.append("  ☎️ не в боті — привітати на касі\n");
+            }
         }
 
-        sb.append("\n<i>Не забудьте привітати клієнтів!</i>");
+        sb.append("\n<i>Бот привітає ").append(willBeGreeted)
+                .append(", вручну на касі: ").append(atCounter).append("</i>");
 
+        return sb.toString();
+    }
+
+    private String formatGreetingSummary(int sent, int failed, int notInBot) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("<b>🎂 Вітання надіслано</b>\n\n");
+        sb.append("Привітано в боті: <b>").append(sent).append("</b>\n");
+        if (failed > 0) {
+            sb.append("Не доставлено: <b>").append(failed).append("</b> (бот заблокований?)\n");
+        }
+        if (notInBot > 0) {
+            sb.append("Не в боті: <b>").append(notInBot).append("</b> — привітати на касі\n");
+        }
         return sb.toString();
     }
 

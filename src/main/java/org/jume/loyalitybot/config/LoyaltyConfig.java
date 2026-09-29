@@ -15,6 +15,8 @@ public class LoyaltyConfig {
 
     private BigDecimal welcomeBonus = BigDecimal.valueOf(50);
 
+    private BigDecimal birthdayBonus = BigDecimal.valueOf(50);
+
     private Integer bonusPercent = 5;
 
     private String currencySymbol = "грн";

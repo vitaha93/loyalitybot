@@ -91,4 +91,35 @@ public class TelegramBotService {
         );
         sendMessageWithMainMenu(chatId, message);
     }
+
+    /**
+     * Sends a birthday greeting. Returns false if Telegram rejected the message
+     * (for example when the customer has blocked the bot).
+     */
+    public boolean sendBirthdayGreeting(Long chatId, String customerName, BigDecimal bonusAmount, BigDecimal totalBonus) {
+        StringBuilder message = new StringBuilder();
+        message.append("<b>\uD83C\uDF82 З днем народження, ").append(customerName).append("!</b>\n\n");
+        message.append("Команда Jume вітає вас і дякує, що ви з нами.");
+
+        if (bonusAmount != null && bonusAmount.compareTo(BigDecimal.ZERO) > 0) {
+            message.append(String.format(
+                    "\n\nСвятковий подарунок від нас: <b>+%s %s</b> бонусів",
+                    bonusAmount.stripTrailingZeros().toPlainString(),
+                    loyaltyConfig.getCurrencySymbol()));
+            if (totalBonus != null) {
+                message.append(String.format(
+                        "\nВаш баланс: <b>%s %s</b>",
+                        totalBonus.stripTrailingZeros().toPlainString(),
+                        loyaltyConfig.getCurrencySymbol()));
+            }
+        }
+
+        try {
+            Long messageId = telegramApiClient.sendMessageAndGetId(chatId, message.toString(), "HTML", null);
+            return messageId != null;
+        } catch (Exception e) {
+            log.warn("Failed to send birthday greeting to chat {}: {}", chatId, e.getMessage());
+            return false;
+        }
+    }
 }
