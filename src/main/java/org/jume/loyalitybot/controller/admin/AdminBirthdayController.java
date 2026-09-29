@@ -2,10 +2,11 @@ package org.jume.loyalitybot.controller.admin;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.jume.loyalitybot.config.LoyaltyConfig;
+import org.jume.loyalitybot.config.PosterApiConfig;
 import org.jume.loyalitybot.dto.PosterClientDto;
 import org.jume.loyalitybot.dto.admin.TelegramLoginData;
 import org.jume.loyalitybot.service.BirthdayNotificationService;
+import org.jume.loyalitybot.service.PosterApiService;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -26,14 +27,17 @@ import java.util.Map;
 public class AdminBirthdayController {
 
     private final BirthdayNotificationService birthdayNotificationService;
-    private final LoyaltyConfig loyaltyConfig;
+    private final PosterApiService posterApiService;
+    private final PosterApiConfig posterApiConfig;
 
     @GetMapping
     public String birthdays(Model model, HttpSession session) {
         TelegramLoginData admin = (TelegramLoginData) session.getAttribute("admin");
         model.addAttribute("admin", admin);
         model.addAttribute("activePage", "birthdays");
-        model.addAttribute("birthdayBonus", loyaltyConfig.getBirthdayBonus());
+        // Poster is the source of truth: the bonus lives on the client group, not in our config
+        model.addAttribute("birthdayBonus", posterApiService.getClientGroupBirthdayBonuses()
+                .getOrDefault(posterApiConfig.getDefaultClientGroupId(), java.math.BigDecimal.ZERO));
 
         List<PosterClientDto> clients = birthdayNotificationService.findTodaysBirthdayClients();
         Map<Long, Boolean> willBeGreeted = new LinkedHashMap<>();

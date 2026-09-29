@@ -12,6 +12,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.ZoneId;
 import java.util.Optional;
 
 @RestController
@@ -23,6 +26,9 @@ public class PosterWebhookController {
     private final CustomerService customerService;
     private final NotificationRetryService notificationRetryService;
     private final ObjectMapper objectMapper;
+
+    private static final ZoneId KYIV = ZoneId.of("Europe/Kyiv");
+    private static final int BIRTHDAY_BONUS_UNTIL_HOUR = 6;
 
     @Value("${poster.webhook.secret:}")
     private String webhookSecret;
@@ -90,6 +96,12 @@ public class PosterWebhookController {
 
             Customer customer = customerOpt.get();
 
+            if (isBirthdayBonus(customer, valueRelative)) {
+                log.info("Skipping purchase notification for customer {}: this is the Poster birthday bonus, "
+                        + "the birthday greeting covers it", customer.getTelegramId());
+                return;
+            }
+
             log.info("Creating bonus notification for customer {} (Poster: {}), change: {}, total: {}",
                     customer.getTelegramId(), clientId, valueRelative, valueAbsolute);
 
@@ -103,5 +115,26 @@ public class PosterWebhookController {
         } catch (Exception e) {
             log.error("Error processing client_bonus webhook: {}", e.getMessage(), e);
         }
+    }
+
+    /**
+     * Poster credits the client-group birthday bonus itself, shortly after midnight on
+     * the customer's birthday. That arrives here as an ordinary bonus change and would
+     * be announced as "thanks for your purchase" in the middle of the night, so it is
+     * skipped — BirthdayNotificationService greets the customer at 9:00 instead.
+     * <p>
+     * The cafe is closed at night, so a credit before {@value #BIRTHDAY_BONUS_UNTIL_HOUR}:00
+     * on the birthday itself cannot come from a purchase.
+     */
+    private boolean isBirthdayBonus(Customer customer, BigDecimal change) {
+        if (change.compareTo(BigDecimal.ZERO) <= 0 || customer.getBirthday() == null) {
+            return false;
+        }
+
+        LocalDate today = LocalDate.now(KYIV);
+        boolean birthdayToday = customer.getBirthday().getMonthValue() == today.getMonthValue()
+                && customer.getBirthday().getDayOfMonth() == today.getDayOfMonth();
+
+        return birthdayToday && LocalTime.now(KYIV).getHour() < BIRTHDAY_BONUS_UNTIL_HOUR;
     }
 }

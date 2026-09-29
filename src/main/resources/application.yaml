@@ -64,7 +64,6 @@ poster:
 # Loyalty Program Settings
 loyalty:
   welcome-bonus: ${LOYALTY_WELCOME_BONUS:50}
-  birthday-bonus: ${LOYALTY_BIRTHDAY_BONUS:50}
   bonus-percent: ${LOYALTY_BONUS_PERCENT:5}
   currency-symbol: ${LOYALTY_CURRENCY_SYMBOL:грн}
 

@@ -17,11 +17,14 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @Service
@@ -325,6 +328,42 @@ public class PosterApiService {
         } catch (Exception e) {
             log.error("Poster API health check failed", e);
             return false;
+        }
+    }
+
+    /**
+     * Birthday bonus configured per client group in Poster, keyed by group id and
+     * converted from kopecks to hryvnia. Poster credits this amount itself just after
+     * midnight on the client's birthday — the bot only reports it.
+     */
+    @Cacheable(value = CacheConfig.POSTER_GROUPS_CACHE)
+    public Map<Long, BigDecimal> getClientGroupBirthdayBonuses() {
+        log.debug("Fetching client groups from Poster");
+        try {
+            String response = posterRestClient.get()
+                    .uri(uriBuilder -> uriBuilder
+                            .path("/clients.getGroups")
+                            .queryParam("token", config.getToken())
+                            .build())
+                    .retrieve()
+                    .body(String.class);
+
+            JsonNode responseNode = objectMapper.readTree(response).path("response");
+            if (!responseNode.isArray()) {
+                return Collections.emptyMap();
+            }
+
+            Map<Long, BigDecimal> bonuses = new HashMap<>();
+            for (JsonNode group : responseNode) {
+                Long groupId = group.path("client_groups_id").asLong();
+                BigDecimal kopecks = new BigDecimal(group.path("birthday_bonus").asText("0"));
+                bonuses.put(groupId, kopecks.divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP));
+            }
+            log.info("Fetched birthday bonuses for {} client groups", bonuses.size());
+            return bonuses;
+        } catch (Exception e) {
+            log.error("Error fetching client groups from Poster", e);
+            return Collections.emptyMap();
         }
     }
 

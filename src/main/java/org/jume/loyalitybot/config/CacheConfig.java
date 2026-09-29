@@ -17,6 +17,7 @@ public class CacheConfig {
     public static final String POSTER_BONUS_CACHE = "posterBonus";
     public static final String POSTER_CLIENTS_CACHE = "posterClients";
     public static final String POSTER_TRANSACTIONS_CACHE = "posterTransactions";
+    public static final String POSTER_GROUPS_CACHE = "posterClientGroups";
     public static final String POSTER_PRODUCTS_CACHE = "posterProducts";
     public static final String POSTER_TX_PRODUCTS_CACHE = "posterTxProducts";
 

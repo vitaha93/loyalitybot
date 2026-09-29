@@ -3,7 +3,6 @@ package org.jume.loyalitybot.service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jume.loyalitybot.config.AdminConfig;
-import org.jume.loyalitybot.config.LoyaltyConfig;
 import org.jume.loyalitybot.dto.PosterClientDto;
 import org.jume.loyalitybot.model.BirthdayGreeting;
 import org.jume.loyalitybot.model.Customer;
@@ -21,6 +20,7 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
@@ -34,11 +34,10 @@ public class BirthdayNotificationService {
     private final CustomerRepository customerRepository;
     private final BirthdayGreetingRepository birthdayGreetingRepository;
     private final AdminConfig adminConfig;
-    private final LoyaltyConfig loyaltyConfig;
 
     private static final ZoneId KYIV = ZoneId.of("Europe/Kyiv");
-    private static final String BONUS_COMMENT = "День народження";
     private static final long SEND_DELAY_MS = 50;
+    private static final BigDecimal SAMPLE_BONUS = BigDecimal.valueOf(50);
     private static final BigDecimal SAMPLE_BALANCE = BigDecimal.valueOf(120);
 
     private static final List<DateTimeFormatter> BIRTHDAY_FORMATTERS = List.of(
@@ -77,8 +76,11 @@ public class BirthdayNotificationService {
 
     /**
      * Runs every day at 9:00 AM Kyiv time — the start of the morning peak.
-     * Greets today's birthday clients who are in the bot, grants the birthday bonus
-     * and reports the result back to the admins.
+     * Greets today's birthday clients who are in the bot and reports back to the admins.
+     * <p>
+     * The bonus itself is <b>not</b> granted here: Poster credits the birthday bonus
+     * configured on the client group just after midnight. The bot only tells the
+     * customer about it, using the amount Poster actually has configured.
      * <p>
      * Every greeting is recorded in {@code birthday_greetings} with a unique
      * (customer, year) key, so a restart or a second run never greets — or pays — twice.
@@ -93,6 +95,7 @@ public class BirthdayNotificationService {
             return;
         }
 
+        Map<Long, BigDecimal> groupBonuses = posterApiService.getClientGroupBirthdayBonuses();
         int year = LocalDate.now(KYIV).getYear();
         int sent = 0;
         int failed = 0;
@@ -112,7 +115,8 @@ public class BirthdayNotificationService {
                 continue;
             }
 
-            if (greetCustomer(customer, greetingOpt.get())) {
+            BigDecimal bonus = groupBonuses.getOrDefault(client.getClientGroupsId(), BigDecimal.ZERO);
+            if (greetCustomer(customer, greetingOpt.get(), bonus)) {
                 sent++;
             } else {
                 failed++;
@@ -159,35 +163,29 @@ public class BirthdayNotificationService {
     }
 
     /**
-     * Grants the birthday bonus and sends the greeting.
-     * If Poster refuses the bonus the customer is still greeted, without the bonus line.
+     * Sends the greeting, reporting the bonus Poster has already credited for this
+     * client's group. A group without a birthday bonus gets a greeting with no gift
+     * line, so we never announce money that was not given.
      */
-    private boolean greetCustomer(Customer customer, BirthdayGreeting greeting) {
-        BigDecimal bonus = loyaltyConfig.getBirthdayBonus();
-        boolean bonusGranted = false;
+    private boolean greetCustomer(Customer customer, BirthdayGreeting greeting, BigDecimal bonus) {
+        boolean hasBonus = bonus != null && bonus.compareTo(BigDecimal.ZERO) > 0;
         BigDecimal totalBonus = null;
 
-        if (bonus != null && bonus.compareTo(BigDecimal.ZERO) > 0 && customer.getPosterClientId() != null) {
-            bonusGranted = posterApiService.addBonus(customer.getPosterClientId(), bonus, BONUS_COMMENT);
-            if (bonusGranted) {
-                totalBonus = posterApiService.getClientBonus(customer.getPosterClientId()).orElse(null);
-            } else {
-                log.warn("Failed to grant birthday bonus to customer {} (poster: {})",
-                        customer.getId(), customer.getPosterClientId());
-            }
+        if (hasBonus && customer.getPosterClientId() != null) {
+            totalBonus = posterApiService.getClientBonus(customer.getPosterClientId()).orElse(null);
         }
 
-        greeting.setBonusAmount(bonusGranted ? bonus : BigDecimal.ZERO);
+        greeting.setBonusAmount(hasBonus ? bonus : BigDecimal.ZERO);
 
         boolean delivered = telegramBotService.sendBirthdayGreeting(
                 customer.getTelegramId(),
                 greetingName(customer),
-                bonusGranted ? bonus : BigDecimal.ZERO,
+                hasBonus ? bonus : BigDecimal.ZERO,
                 totalBonus);
 
         if (delivered) {
-            greeting.markAsSent(bonusGranted);
-            log.info("Sent birthday greeting to customer {} (bonus granted: {})", customer.getId(), bonusGranted);
+            greeting.markAsSent(hasBonus);
+            log.info("Sent birthday greeting to customer {} (bonus reported: {})", customer.getId(), hasBonus);
         } else {
             greeting.markAsFailed("Telegram не прийняв повідомлення");
             log.warn("Failed to deliver birthday greeting to customer {}", customer.getId());
@@ -247,9 +245,8 @@ public class BirthdayNotificationService {
      * and without recording anything — used from the admin panel to preview the text.
      */
     public boolean sendTestGreeting(Long chatId, String name) {
-        BigDecimal bonus = loyaltyConfig.getBirthdayBonus();
         log.info("Sending test birthday greeting to chat {}", chatId);
-        return telegramBotService.sendBirthdayGreeting(chatId, name, bonus, SAMPLE_BALANCE);
+        return telegramBotService.sendBirthdayGreeting(chatId, name, SAMPLE_BONUS, SAMPLE_BALANCE);
     }
 
     /**
