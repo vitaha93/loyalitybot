@@ -27,7 +27,12 @@ spring:
   flyway:
     enabled: true
     locations: classpath:db/migration
+    # The production schema was built by Hibernate ddl-auto before Flyway was wired in,
+    # so it already matches V1-V8 but has no history table. Baselining at 8 adopts it
+    # as-is and applies V9 onwards. An empty database still gets every migration:
+    # baseline-on-migrate only kicks in on a non-empty schema.
     baseline-on-migrate: true
+    baseline-version: 8
 
   cache:
     type: caffeine
