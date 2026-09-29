@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{admin/layout/base :: layout(~{::content}, 'Дні народження')}">
+<body>
+<div th:fragment="content">
+    <div class="page-header">
+        <h1>Дні народження</h1>
+    </div>
+
+    <div th:if="${success}" class="alert alert-success" th:text="${success}"></div>
+    <div th:if="${error}" class="alert alert-error" th:text="${error}"></div>
+
+    <div class="card">
+        <div class="card-header">
+            <h2>Іменинники сьогодні</h2>
+        </div>
+        <div class="card-body">
+            <p th:if="${#lists.isEmpty(clients)}" class="empty-state">
+                Сьогодні днів народження немає.
+            </p>
+
+            <dl class="info-list" th:unless="${#lists.isEmpty(clients)}">
+                <div class="info-item" th:each="client : ${clients}">
+                    <dt th:text="${(client.firstName != null ? client.firstName : '') + ' ' + (client.lastName != null ? client.lastName : '')}">Ім'я</dt>
+                    <dd th:if="${willBeGreeted[client.clientId]}">Бот привітає о 9:00</dd>
+                    <dd th:unless="${willBeGreeted[client.clientId]}">Не в боті або вже привітали — вручну на касі</dd>
+                </div>
+            </dl>
+        </div>
+    </div>
+
+    <div class="card" style="margin-top: 1.5rem;">
+        <div class="card-header">
+            <h2>Тестове вітання</h2>
+        </div>
+        <div class="card-body">
+            <p>
+                Надішле текст вітання у <b>ваш</b> чат з ботом, щоб подивитись, як його бачить клієнт.
+                Бонуси не нараховуються, клієнтам нічого не йде, натискати можна скільки завгодно.
+                Баланс у тесті — приклад (120 грн).
+            </p>
+
+            <div class="form-actions">
+                <form th:action="@{/admin/birthdays/test}" method="post">
+                    <button type="submit" class="btn btn-primary">
+                        Надіслати собі
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="card" style="margin-top: 1.5rem;">
+        <div class="card-header">
+            <h2>Розіслати вітання зараз</h2>
+        </div>
+        <div class="card-body">
+            <p>
+                Справжня розсилка: сьогоднішні іменинники з бота отримають вітання і
+                <b th:text="${birthdayBonus} + ' грн'">50 грн</b> бонусів у Poster.
+                Зазвичай це відбувається автоматично о 9:00 — кнопка потрібна, лише якщо треба раніше
+                або якщо автоматичний запуск не спрацював.
+            </p>
+            <p class="text-muted" style="font-size: 0.875rem;">
+                Натиснути двічі безпечно: кожного клієнта вітаємо не більше одного разу на рік.
+            </p>
+
+            <div class="form-actions">
+                <form th:action="@{/admin/birthdays/run}" method="post">
+                    <button type="submit" class="btn btn-primary">
+                        Розіслати зараз
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>
