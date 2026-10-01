@@ -64,3 +64,9 @@ build/
 ### Local secrets ###
 application-local.yaml
 .env
+
+### Business context and analytics — never commit, this repository is public ###
+CLAUDE.md
+AGENTS.md
+jume-report.html
+marketing-playbook.md
